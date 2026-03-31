@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Chat P2P Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+        :root {
+            --ios-safe-top: env(safe-area-inset-top);
+            --ios-safe-bottom: env(safe-area-inset-bottom);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #ffffff;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain; /* Mencegah pull-to-refresh */
+        }
+
+        /* Perbaikan Penting: Font minimal 16px untuk mencegah Zoom di iPhone */
+        input, select, textarea {
+            font-size: 16px !important;
+        }
+
+        .safe-pt { padding-top: calc(1rem + var(--ios-safe-top)); }
+        .safe-pb { padding-bottom: calc(1rem + var(--ios-safe-bottom)); }
+
+        /* Custom Scrollbar untuk area chat */
+        .chat-container::-webkit-scrollbar { width: 0; }
+        
+        .message-bubble {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .remote-video-fullscreen {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+
+        #local-video-pip {
+            position: absolute;
+            top: calc(20px + var(--ios-safe-top));
+            right: 20px;
+            width: 100px;
+            height: 150px;
+            border-radius: 12px;
+            background: #222;
+            object-fit: cover;
+            border: 2px solid white;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+
+        /* Animasi Transisi Halaman */
+        .page-slide {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .call-btn-pulse {
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="h-screen overflow-hidden flex flex-col bg-gray-50">
+
+    <!-- Container Utama -->
+    <div id="main-app" class="relative flex-1 w-full max-w-lg mx-auto bg-white flex flex-col h-full shadow-2xl">
+
+        <!-- SCREEN: Login/Set Username -->
+        <div id="screen-login" class="absolute inset-0 z-[100] bg-indigo-600 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
+            <div class="mb-8 p-6 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
+                <i data-lucide="shield-check" class="w-16 h-16"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold mb-2">ConnectPro</h1>
+            <p class="text-indigo-100 text-center mb-10 text-sm opacity-80">Masukkan nama unik Anda untuk mulai mengobrol secara privat.</p>
+            
+            <div class="w-full space-y-4">
+                <input type="text" id="login-username" placeholder="Username (misal: andi_99)" 
+                    class="w-full p-4 rounded-2xl bg-white text-gray-900 font-semibold outline-none shadow-xl">
+                <button onclick="initApp()" class="w-full py-4 bg-indigo-950 rounded-2xl font-bold hover:bg-black transition active:scale-95 shadow-lg">
+                    Masuk Sekarang
+                </button>
+            </div>
+            <p class="mt-12 text-[10px] uppercase tracking-widest opacity-50">P2P Encryption Active</p>
+        </div>
+
+        <!-- SCREEN: Home (Contact List) -->
+        <div id="screen-home" class="flex flex-col h-full hidden">
+            <header class="safe-pt px-6 pb-4 bg-white border-b flex justify-between items-center sticky top-0 z-20">
+                <div class="flex items-center gap-3">
+                    <div id="my-avatar" class="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg">?</div>
+                    <div>
+                        <h2 id="my-display-id" class="font-bold text-gray-900 leading-none mb-1">Username</h2>
+                        <span class="text-[10px] font-bold text-green-500 uppercase">● Online</span>
+                    </div>
+                </div>
+                <button onclick="openModalAdd()" class="p-2.5 bg-gray-50 rounded-xl text-gray-600 active:bg-indigo-50 active:text-indigo-600 transition">
+                    <i data-lucide="plus" class="w-6 h-6"></i>
+                </button>
+            </header>
+
+            <div class="px-6 py-4">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Kontak Saya</h3>
+                <div id="contact-list" class="space-y-3 overflow-y-auto">
+                    <!-- Daftar Kontak -->
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-contacts" class="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-30">
+                <i data-lucide="users" class="w-16 h-16 mb-4"></i>
+                <p class="font-semibold">Belum ada kontak.<br>Tambah teman dengan ID mereka!</p>
+            </div>
+        </div>
+
+        <!-- SCREEN: Chat Detail -->
+        <div id="screen-chat" class="absolute inset-0 z-50 bg-white flex flex-col page-slide translate-x-full hidden">
+            <header class="safe-pt px-4 pb-3 border-b flex items-center gap-2 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                <button onclick="closeChat()" class="p-2 -ml-2 text-gray-500 active:scale-90 transition">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                <div id="target-avatar" class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-indigo-600">?</div>
+                <div class="flex-1 overflow-hidden">
+                    <h3 id="target-name" class="font-bold text-gray-900 leading-none truncate">Nama Teman</h3>
+                    <p class="text-[10px] text-gray-400 font-bold uppercase mt-1">P2P Terhubung</p>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="startCall('video')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
+                        <i data-lucide="video" class="w-5 h-5"></i>
+                    </button>
+                    <button onclick="startCall('audio')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
+                        <i data-lucide="phone" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 chat-container">
+                <!-- Pesan Chat -->
+            </div>
+
+            <div class="px-4 py-3 bg-white border-t flex items-center gap-2 safe-pb">
+                <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4">
+                    <input type="text" id="chat-input" placeholder="Tulis pesan..." 
+                        class="flex-1 py-3 bg-transparent border-none focus:ring-0 outline-none">
+                </div>
+                <button onclick="sendMsg()" class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition">
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN: Call UI -->
+        <div id="screen-call" class="fixed inset-0 z-[200] bg-black hidden flex flex-col">
+            <video id="remote-video" class="remote-video-fullscreen" autoplay playsinline></video>
+            <video id="local-video-pip" autoplay muted playsinline></video>
+
+            <div class="absolute inset-0 flex flex-col items-center justify-between py-20 px-10">
+                <div class="text-center safe-pt">
+                    <h2 id="call-target-name" class="text-2xl font-bold text-white mb-2">Nama Teman</h2>
+                    <p class="text-white/60 text-xs tracking-widest uppercase">Panggilan Aktif</p>
+                </div>
+
+                <div class="flex gap-6 items-center">
+                    <button onclick="toggleMic()" id="mic-toggle" class="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white">
+                        <i data-lucide="mic"></i>
+                    </button>
+                    <button onclick="endCall()" class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white call-btn-pulse">
+                        <i data-lucide="phone-off" class="w-8 h-8"></i>
+                    </button>
+                    <button onclick="toggleCam()" id="cam-toggle" class="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white">
+                        <i data-lucide="video"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: Tambah Kontak -->
+        <div id="modal-add" class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+            <div class="bg-white w-full rounded-[2rem] p-6 shadow-2xl">
+                <h3 class="text-xl font-bold mb-2">Tambah Teman</h3>
+                <p class="text-sm text-gray-500 mb-6">Masukkan ID unik teman Anda untuk mulai mengobrol.</p>
+                <input type="text" id="add-id-input" placeholder="ID Teman..." 
+                    class="w-full p-4 bg-gray-100 rounded-2xl mb-6 outline-none focus:ring-2 focus:ring-indigo-600 font-bold">
+                <div class="flex gap-3">
+                    <button onclick="closeModalAdd()" class="flex-1 py-4 font-bold text-gray-400">Batal</button>
+                    <button onclick="confirmAddContact()" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg">Tambah</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-2xl opacity-0 transition-all pointer-events-none">
+        Notification
+    </div>
+
+    <script>
+        let peer, myId, activeConn, activeCall, localStream;
+        let contacts = JSON.parse(localStorage.getItem('p2p_contacts') || '[]');
+        let chatHistory = JSON.parse(localStorage.getItem('p2p_chat_db') || '{}');
+        let isMic = true, isCam = true;
+
+        lucide.createIcons();
+
+        function initApp() {
+            const userIn = document.getElementById('login-username');
+            myId = userIn.value.trim().toLowerCase().replace(/\s+/g, '_');
+
+            if (myId.length < 3) return alert("ID terlalu pendek!");
+
+            peer = new Peer(myId, { debug: 1 });
+
+            peer.on('open', (id) => {
+                document.getElementById('screen-login').classList.add('opacity-0', 'pointer-events-none');
+                document.getElementById('screen-home').classList.remove('hidden');
+                document.getElementById('my-display-id').innerText = id;
+                document.getElementById('my-avatar').innerText = id.charAt(0).toUpperCase();
+                renderContacts();
+                showToast("Terhubung sebagai " + id);
+            });
+
+            peer.on('connection', (conn) => {
+                handleInboundConn(conn);
+            });
+
+            peer.on('call', async (call) => {
+                if(confirm(`Telepon dari ${call.peer}. Terima?`)) {
+                    await setupMedia(true);
+                    call.answer(localStream);
+                    manageCall(call);
+                }
+            });
+
+            peer.on('error', (err) => {
+                if(err.type === 'unavailable-id') alert("ID sudah ada yang pakai!");
+                else showToast("Koneksi gagal");
+            });
+        }
+
+        // KONTAK
+        function openModalAdd() { document.getElementById('modal-add').classList.remove('hidden'); }
+        function closeModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
+
+        function confirmAddContact() {
+            const id = document.getElementById('add-id-input').value.trim().toLowerCase();
+            if(!id || id === myId) return;
+            if(!contacts.find(c => c.id === id)) {
+                contacts.push({ id });
+                localStorage.setItem('p2p_contacts', JSON.stringify(contacts));
+                renderContacts();
+            }
+            closeModalAdd();
+        }
+
+        function renderContacts() {
+            const list = document.getElementById('contact-list');
+            const empty = document.getElementById('empty-contacts');
+            list.innerHTML = "";
+            
+            if(contacts.length > 0) empty.classList.add('hidden');
+            else empty.classList.remove('hidden');
+
+            contacts.forEach(c => {
+                const row = document.createElement('div');
+                row.className = "flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl active:bg-indigo-50 active:scale-[0.98] transition cursor-pointer";
+                row.onclick = () => openChat(c.id);
+                row.innerHTML = `
+                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold">${c.id.charAt(0).toUpperCase()}</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-gray-800">${c.id}</h4>
+                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Klik untuk chat</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                `;
+                list.appendChild(row);
+            });
+            lucide.createIcons();
+        }
+
+        // CHAT
+        function openChat(id) {
+            const screen = document.getElementById('screen-chat');
+            screen.classList.remove('hidden');
+            setTimeout(() => screen.classList.remove('translate-x-full'), 10);
+            
+            document.getElementById('target-name').innerText = id;
+            document.getElementById('target-avatar').innerText = id.charAt(0).toUpperCase();
+
+            if(!activeConn || activeConn.peer !== id) {
+                if(activeConn) activeConn.close();
+                activeConn = peer.connect(id);
+                setupConnHandlers(activeConn);
+            }
+            renderMsgs(id);
+        }
+
+        function closeChat() {
+            const screen = document.getElementById('screen-chat');
+            screen.classList.add('translate-x-full');
+            setTimeout(() => screen.classList.add('hidden'), 300);
+        }
+
+        function setupConnHandlers(conn) {
+            conn.on('data', (data) => {
+                saveMsg(conn.peer, data, 'them');
+                if(document.getElementById('target-name').innerText === conn.peer) renderMsgs(conn.peer);
+                else showToast("Pesan baru dari " + conn.peer);
+            });
+        }
+
+        function handleInboundConn(conn) {
+            activeConn = conn;
+            setupConnHandlers(conn);
+            if(!contacts.find(c => c.id === conn.peer)) {
+                contacts.push({id: conn.peer});
+                localStorage.setItem('p2p_contacts', JSON.stringify(contacts));
+                renderContacts();
+            }
+        }
+
+        function sendMsg() {
+            const input = document.getElementById('chat-input');
+            const txt = input.value.trim();
+            if(!txt || !activeConn) return;
+
+            activeConn.send(txt);
+            saveMsg(activeConn.peer, txt, 'me');
+            renderMsgs(activeConn.peer);
+            input.value = "";
+        }
+
+        function saveMsg(id, text, sender) {
+            if(!chatHistory[id]) chatHistory[id] = [];
+            chatHistory[id].push({ text, sender, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+            localStorage.setItem('p2p_chat_db', JSON.stringify(chatHistory));
+        }
+
+        function renderMsgs(id) {
+            const box = document.getElementById('chat-messages');
+            box.innerHTML = "";
+            (chatHistory[id] || []).forEach(m => {
+                const d = document.createElement('div');
+                d.className = `flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`;
+                d.innerHTML = `
+                    <div class="message-bubble shadow-sm ${m.sender === 'me' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'}">
+                        ${m.text}
+                        <div class="text-[9px] mt-1 opacity-50 text-right font-bold">${m.time}</div>
+                    </div>
+                `;
+                box.appendChild(d);
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+
+        // CALL
+        async function setupMedia(video) {
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
+                document.getElementById('local-video-pip').srcObject = localStream;
+            } catch(e) { showToast("Gagal akses media"); }
+        }
+
+        async function startCall(type) {
+            const id = document.getElementById('target-name').innerText;
+            await setupMedia(type === 'video');
+            document.getElementById('screen-call').classList.remove('hidden');
+            document.getElementById('call-target-name').innerText = id;
+            
+            const call = peer.call(id, localStream);
+            manageCall(call);
+        }
+
+        function manageCall(call) {
+            activeCall = call;
+            document.getElementById('screen-call').classList.remove('hidden');
+            call.on('stream', (rem) => {
+                document.getElementById('remote-video').srcObject = rem;
+            });
+            call.on('close', endCall);
+        }
+
+        function endCall() {
+            if(activeCall) activeCall.close();
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            document.getElementById('screen-call').classList.add('hidden');
+            showToast("Panggilan berakhir");
+        }
+
+        function toggleMic() {
+            isMic = !isMic;
+            localStream.getAudioTracks()[0].enabled = isMic;
+            document.getElementById('mic-toggle').innerHTML = `<i data-lucide="${isMic ? 'mic' : 'mic-off'}"></i>`;
+            lucide.createIcons();
+        }
+
+        function toggleCam() {
+            isCam = !isCam;
+            localStream.getVideoTracks()[0].enabled = isCam;
+            document.getElementById('cam-toggle').innerHTML = `<i data-lucide="${isCam ? 'video' : 'video-off'}"></i>`;
+            lucide.createIcons();
+        }
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            t.innerText = m;
+            t.classList.replace('opacity-0', 'opacity-100');
+            t.classList.replace('translate-y-10', 'translate-y-0');
+            setTimeout(() => {
+                t.classList.replace('opacity-100', 'opacity-0');
+                t.classList.replace('translate-y-0', 'translate-y-10');
+            }, 3000);
+        }
+
+        // Keyboard Enter
+        document.getElementById('chat-input').addEventListener('keypress', (e) => e.key === 'Enter' && sendMsg());
+        document.getElementById('login-username').addEventListener('keypress', (e) => e.key === 'Enter' && initApp());
+
+    </script>
+</body>
+</html>
+
