@@ -97,5 +97,4 @@ async function renderCallHistory() {
         list.appendChild(item);
     });
     lucide.createIcons();
-} 
-.
+}
