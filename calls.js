@@ -87,9 +87,9 @@ async function renderCallHistory() {
     list.innerHTML = logs.length ? "" : '<div class="p-10 text-center opacity-30 text-xs font-bold">Tidak ada riwayat panggilan</div>';
     logs.forEach(log => {
         const item = document.createElement('div');
-        item.className = "call-log-item";
+        item.className = "flex items-center gap-4 py-3 hover:bg-gray-50 border-b border-gray-50 transition last:border-0 px-4";
         item.innerHTML = `
-            <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-indigo-600">${log.peerId.charAt(0).toUpperCase()}</div>
+            <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center font-bold text-indigo-600 flex-shrink-0 shadow-sm">${log.peerId.charAt(0).toUpperCase()}</div>
             <div class="flex-1">
                 <h4 class="font-bold text-gray-800 text-sm">${log.peerId}</h4>
                 <p class="text-[10px] uppercase font-bold text-gray-400">${log.status} • ${new Date(log.time).toLocaleString()}</p>
