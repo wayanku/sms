@@ -1,32 +1,59 @@
 function switchTab(tab) {
     const navChats = document.getElementById('nav-chats');
+    const navContacts = document.getElementById('nav-contacts');
     const navCalls = document.getElementById('nav-calls');
+    const navSettings = document.getElementById('nav-settings');
     const contChats = document.getElementById('tab-content-chats');
+    const contContacts = document.getElementById('tab-content-contacts');
     const contCalls = document.getElementById('tab-content-calls');
+    const contSettings = document.getElementById('tab-content-settings');
 
     navChats.className = `flex-1 py-3 flex flex-col items-center gap-1 ${tab==='chats'?'text-indigo-600':'text-gray-400'}`;
+    navContacts.className = `flex-1 py-3 flex flex-col items-center gap-1 ${tab==='contacts'?'text-indigo-600':'text-gray-400'}`;
     navCalls.className = `flex-1 py-3 flex flex-col items-center gap-1 ${tab==='calls'?'text-indigo-600':'text-gray-400'}`;
+    navSettings.className = `flex-1 py-3 flex flex-col items-center gap-1 ${tab==='settings'?'text-indigo-600':'text-gray-400'}`;
     
     contChats.classList.toggle('hidden', tab !== 'chats');
+    contContacts.classList.toggle('hidden', tab !== 'contacts');
     contCalls.classList.toggle('hidden', tab !== 'calls');
+    contSettings.classList.toggle('hidden', tab !== 'settings');
+
+    // Update Header
+    const header = document.getElementById('main-header');
+    const headerTitle = document.getElementById('header-title');
+    if (tab === 'settings') {
+        headerTitle.innerText = "Pengaturan";
+        header.querySelector('.flex.gap-1').classList.add('hidden');
+    } else {
+        headerTitle.innerText = "Chats+";
+        header.querySelector('.flex.gap-1').classList.remove('hidden');
+    }
+
+    // Di desktop, pastikan screen-home tetap terlihat meski tab berpindah
+    if(window.innerWidth >= 1024) {
+        document.getElementById('screen-home').classList.remove('hidden');
+    }
     
+    if(tab === 'chats') renderRecentChats();
+    if(tab === 'contacts') renderContacts();
     if(tab === 'calls') renderCallHistory();
+    updateTotalUnreadBadge(); // Update total unread count when switching tabs
     lucide.createIcons();
 }
 
-function openProfile() {
-    const screen = document.getElementById('screen-profile');
-    screen.classList.remove('hidden');
-    document.getElementById('profile-name').innerText = myId;
-    document.getElementById('profile-avatar-big').innerText = (myId.charAt(0) || '?').toUpperCase();
-    setTimeout(() => screen.classList.remove('translate-x-full'), 10);
-    lucide.createIcons();
-}
+function updateFilter(element, filterType) {
+    // Reset semua tombol di dalam container filter
+    const pills = document.querySelectorAll('#filter-pills button');
+    pills.forEach(p => {
+        p.classList.remove('pill-active');
+        p.classList.add('pill-inactive');
+    });
 
-function closeProfile() {
-    const screen = document.getElementById('screen-profile');
-    screen.classList.add('translate-x-full');
-    setTimeout(() => screen.classList.add('hidden'), 300);
+    // Aktifkan tombol yang diklik
+    element.classList.remove('pill-inactive');
+    element.classList.add('pill-active');
+
+    renderRecentChats(document.getElementById('search-chat-input').value, filterType);
 }
 
 // CUSTOM DIALOG HELPERS
