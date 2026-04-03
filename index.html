@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Chat P2P Pro</title>
     
@@ -447,16 +447,25 @@
                 text: data.text || null,
                 type: data.type,
                 fileBlob: data.fileBlob || null,
+                image_url: data.image_url || null,
                 status: sender === 'me' ? 'sent' : 'received',
                 time: data.time || Date.now()
             });
 
-            // 2. Simpan ke Supabase (Jika tipe teks)
             if (data.type === 'text') {
                 await sb.from('messages').insert([{
                     sender: sender === 'me' ? myId : peerId,
                     receiver: sender === 'me' ? peerId : myId,
                     content: data.text,
+                    type: 'text',
+                    created_at: new Date(data.time).toISOString()
+                }]);
+            } else if (data.type === 'image' && data.image_url) {
+                await sb.from('messages').insert([{
+                    sender: sender === 'me' ? myId : peerId,
+                    receiver: sender === 'me' ? peerId : myId,
+                    image_url: data.image_url,
+                    type: 'image',
                     created_at: new Date(data.time).toISOString()
                 }]);
             }
@@ -489,7 +498,7 @@
                             text: msg.content,
                             type: msg.type, // Simpan tipe pesan dari Supabase
                             status: 'delivered',
-                            time: msgTime
+                            time: msgTime,
                             image_url: msg.image_url || null // Simpan URL gambar dari Supabase
                         });
                     }
