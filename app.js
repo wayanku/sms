@@ -71,8 +71,12 @@ if (document.readyState === 'loading') {
     startApp();
 }
 
-document.getElementById('login-username').addEventListener('keypress', (e) => e.key === 'Enter' && initApp());
+document.getElementById('login-username').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') initApp();
+});
+
 function setupRealtime() {
+    if (!sb) return;
     sb.channel('public:messages')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
             const msg = payload.new;
