@@ -13,153 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <style type="text/tailwindcss">
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
-
-        :root {
-            --ios-safe-top: env(safe-area-inset-top, 0px);
-            --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
-        }
-
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f8fafc;
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: contain; /* Mencegah pull-to-refresh */
-            height: 100dvh; 
-            width: 100vw;
-            overflow: hidden;
-            position: fixed; /* Mencegah scroll pada body */
-        }
-
-        #main-app {
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Mencegah Zoom Otomatis di iOS */
-        input, select, textarea {
-            font-size: 16px !important;
-        }
-
-        .safe-pt { padding-top: calc(1rem + var(--ios-safe-top, 0px)); }
-        .safe-pb { padding-bottom: calc(0.75rem + var(--ios-safe-bottom)); }
-
-        /* Custom Scrollbar untuk area chat */
-        .chat-container::-webkit-scrollbar { width: 0; }
-
-        #chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            background-color: #f8fafc;
-            display: flex;
-            flex-direction: column;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* Pastikan screen-chat menutupi layar sepenuhnya */
-        #screen-chat {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 160;
-            background: white;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-        
-        .message-bubble {
-            max-width: 80%;
-            padding: 10px 14px;
-            border-radius: 20px;
-            font-size: 15px;
-            line-height: 1.4;
-        }
-
-        .remote-video-fullscreen {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #000;
-        }
-
-        #local-video-pip {
-            position: absolute;
-            top: calc(20px + var(--ios-safe-top));
-            right: 20px;
-            width: 100px;
-            height: 150px;
-            border-radius: 12px;
-            background: #222;
-            object-fit: cover;
-            border: 2px solid white;
-            z-index: 100;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-        }
-
-        /* Animasi Transisi Halaman */
-        .page-slide {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .call-btn-pulse {
-            animation: pulse-red 2s infinite;
-        }
-
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
-            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-        }
-
-        .ephemeral-badge {
-            font-size: 9px;
-            padding: 2px 6px;
-            border-radius: 10px;
-            background: rgba(0,0,0,0.1);
-            margin-bottom: 4px;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .setting-item {
-            @apply flex items-center gap-4 p-4 active:bg-gray-50 transition border-b border-gray-50;
-        }
-
-        /* Glassmorphism Header */
-        .glass-header {
-            @apply bg-white/90 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100;
-        }
-
-        /* Chat Input Container */
-        .chat-input-wrapper {
-            @apply bg-white border-t border-gray-100 px-4 py-3 flex items-end gap-3 safe-pb;
-        }
-
-        .input-field {
-            @apply flex-1 bg-gray-100 rounded-[22px] px-4 py-2.5 focus-within:bg-gray-200 transition-colors flex items-center gap-2;
-        }
-
-        .action-btn {
-            @apply p-2.5 rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-90;
-        }
-
-        footer {
-            flex-shrink: 0; 
-            background: white;
-            z-index: 10;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css?v=1.2"> 
 </head>
 <body class="h-screen overflow-hidden flex flex-col bg-gray-50">
 
@@ -167,7 +21,7 @@
     <div id="main-app" class="relative flex-1 w-full max-w-lg mx-auto bg-white flex flex-col h-full overflow-hidden shadow-2xl">
 
         <!-- SCREEN: Login/Set Username -->
-        <div id="screen-login" class="absolute inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-800 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
+        <div id="screen-login" class="fixed inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-800 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
             <div class="mb-8 p-6 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
                 <i data-lucide="shield-check" class="w-16 h-16"></i>
             </div>
@@ -186,9 +40,9 @@
 
         <!-- SCREEN: Home (Contact List) -->
         <div id="screen-home" class="absolute inset-0 z-10 flex flex-col bg-white hidden h-full">
-            <header class="safe-pt px-6 pb-4 glass-header flex justify-between items-center">
+            <header class="safe-pt px-6 pb-4 glass-header flex justify-between items-center flex-shrink-0">
                 <div class="flex items-center gap-3">
-                    <div id="my-avatar" onclick="openProfile()" class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md cursor-pointer active:scale-95 transition">
+                    <div id="my-avatar" class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md transition">
                         ?
                     </div>
                     <div>
@@ -199,18 +53,31 @@
                 <button onclick="openModalAdd()" class="action-btn bg-gray-50"><i data-lucide="plus" class="w-6 h-6"></i></button>
             </header>
 
-            <div class="flex-1 overflow-y-auto px-6 py-4">
-                <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-4">Percakapan Baru</h3>
-                <div id="contact-list" class="space-y-3 overflow-y-auto">
-                    <!-- Daftar Kontak -->
-                </div>
-
-                <!-- Empty State -->
+            <div id="tab-content-chats" class="flex-1 overflow-y-auto px-6 py-4">
+                <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-4">Percakapan</h3>
+                <div id="contact-list" class="space-y-3"></div>
                 <div id="empty-contacts" class="flex flex-col items-center justify-center p-10 text-center opacity-30 hidden">
                     <i data-lucide="users" class="w-16 h-16 mb-4"></i>
-                    <p class="font-semibold">Belum ada kontak.<br>Tambah teman dengan ID mereka!</p>
+                    <p class="font-semibold">Belum ada kontak.</p>
                 </div>
             </div>
+
+            <div id="tab-content-calls" class="flex-1 overflow-y-auto hidden">
+                <div id="call-history-list" class="divide-y divide-gray-50"></div>
+            </div>
+
+            <!-- Bottom Navigation -->
+            <nav class="flex border-t bg-white safe-pb flex-shrink-0">
+                <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-3 flex flex-col items-center gap-1 text-indigo-600">
+                    <i data-lucide="message-square" class="w-5 h-5"></i><span class="text-[10px] font-bold">Chat</span>
+                </button>
+                <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="phone" class="w-5 h-5"></i><span class="text-[10px] font-bold">Panggilan</span>
+                </button>
+                <button onclick="openProfile()" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="settings" class="w-5 h-5"></i><span class="text-[10px] font-bold">Setelan</span>
+                </button>
+            </nav>
         </div>
 
         <!-- SCREEN: Profile & Settings -->
@@ -269,10 +136,9 @@
                         <button onclick="toggleChatMenu()" class="p-2 text-gray-400">
                             <i data-lucide="more-vertical" class="w-5 h-5"></i>
                         </button>
-                        <div id="chat-options-menu" class="hidden absolute top-full right-0 mt-2 w-40 bg-white shadow-2xl rounded-2xl border p-1 z-[200]">
-                            <button onclick="clearCurrentChat()" class="w-full text-left p-3 text-red-600 text-xs font-bold flex items-center gap-2 hover:bg-red-50 rounded-xl">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i> Bersihkan Chat
-                            </button>
+                        <div id="chat-options-menu" class="hidden absolute top-full right-0 mt-2 w-48 bg-white shadow-2xl rounded-2xl border p-1 z-[200]">
+                            <button onclick="clearChatAction('me')" class="w-full text-left p-3 text-gray-700 text-xs font-bold hover:bg-gray-50 rounded-xl flex items-center gap-2"><i data-lucide="eraser" class="w-4 h-4"></i> Bersihkan untuk saya</button>
+                            <button onclick="clearChatAction('everyone')" class="w-full text-left p-3 text-red-600 text-xs font-bold hover:bg-red-50 rounded-xl flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Bersihkan untuk semua</button>
                         </div>
                     </div>
                     <button onclick="startCall('video')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
@@ -288,23 +154,35 @@
                 <!-- Pesan Chat -->
             </div>
 
-            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3 safe-pb">
-                <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-500 flex-shrink-0">
-                    <i data-lucide="paperclip" class="w-5 h-5"></i>
-                </button>
-                <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0">
-                    <select id="ephemeral-mode" class="bg-transparent border-none text-[10px] font-black text-indigo-600 uppercase outline-none cursor-pointer">
-                        <option value="none">●</option>
-                        <option value="24h">24H</option>
-                        <option value="10s">10S</option>
-                    </select>
-                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
-                    <input type="text" id="chat-input" placeholder="Tulis pesan..." 
-                        class="flex-1 bg-transparent border-none focus:ring-0 outline-none text-[15px] py-1">
+            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex flex-col safe-pb flex-shrink-0"> 
+                <!-- Reply Preview Container -->
+                <div id="reply-container" class="hidden">
+                    <div class="reply-preview">
+                        <div class="flex-1 min-w-0 mr-2">
+                            <p id="reply-target-name" class="font-bold text-indigo-600 mb-0.5"></p>
+                            <p id="reply-target-text" class="truncate opacity-60"></p>
+                        </div>
+                        <button onclick="cancelReply()" class="p-1 text-gray-400"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
                 </div>
-                <button onclick="sendMsg()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform">
-                    <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-500 flex-shrink-0">
+                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                    </button>
+                    <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0">
+                        <select id="ephemeral-mode" class="bg-transparent border-none text-[10px] font-black text-indigo-600 uppercase outline-none cursor-pointer">
+                            <option value="none">●</option>
+                            <option value="24h">24H</option>
+                            <option value="10s">10S</option>
+                        </select>
+                        <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
+                        <input type="text" id="chat-input" placeholder="Tulis pesan..." 
+                            class="flex-1 bg-transparent border-none focus:ring-0 outline-none text-[15px] py-1">
+                    </div>
+                    <button onclick="sendMsg()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform">
+                        <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
+                    </button>
+                </div>
             </footer>
         </div>
 
@@ -312,24 +190,43 @@
         <div id="screen-call" class="absolute inset-0 z-[200] bg-black hidden flex flex-col">
             <video id="remote-video" class="remote-video-fullscreen" autoplay playsinline></video>
             <video id="local-video-pip" autoplay muted playsinline></video>
-
             <div class="absolute inset-0 flex flex-col items-center justify-between py-20 px-10">
-                <div class="text-center safe-pt">
-                    <h2 id="call-target-name" class="text-2xl font-bold text-white mb-2">Nama Teman</h2>
-                    <p class="text-white/60 text-xs tracking-widest uppercase">Panggilan Aktif</p>
-                </div>
+                <div class="text-center safe-pt">...</div>
+                <div class="flex gap-6 items-center">...</div>
+            </div>
+        </div>
 
-                <div class="flex gap-6 items-center">
-                    <button onclick="toggleMic()" id="mic-toggle" class="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white">
-                        <i data-lucide="mic"></i>
-                    </button>
-                    <button onclick="endCall()" class="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center text-white call-btn-pulse">
-                        <i data-lucide="phone-off" class="w-8 h-8"></i>
-                    </button>
-                    <button onclick="toggleCam()" id="cam-toggle" class="w-14 h-14 bg-white/20 backdrop-blur rounded-full flex items-center justify-center text-white">
-                        <i data-lucide="video"></i>
-                    </button>
+        <!-- OVERLAY: Incoming Call -->
+        <div id="incoming-call-overlay" class="fixed inset-0 z-[300] bg-indigo-900/95 flex flex-col items-center justify-between py-24 px-10 text-white hidden">
+            <div class="text-center">
+                <div id="ic-avatar" class="w-24 h-24 bg-white/20 rounded-[2.5rem] flex items-center justify-center text-4xl font-bold mb-6 mx-auto">?</div>
+                <h2 id="ic-name" class="text-3xl font-black mb-2">Nama Teman</h2>
+                <p class="text-indigo-200 uppercase tracking-widest text-xs font-bold animate-pulse">Panggilan Masuk...</p>
+            </div>
+            <div class="flex w-full justify-around items-center">
+                <button onclick="rejectCall()" class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition"><i data-lucide="phone-off" class="w-8 h-8"></i></button>
+                <button onclick="acceptCall()" class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition call-btn-pulse"><i data-lucide="phone" class="w-10 h-10"></i></button>
+            </div>
+        </div>
+
+        <!-- COMPONENT: Custom Dialog (Modal) -->
+        <div id="modal-custom" class="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+            <div class="bg-white w-full rounded-[2rem] p-6 shadow-2xl scale-95 transition-transform duration-200">
+                <h3 id="modal-title" class="text-xl font-black mb-2 text-gray-900">Judul</h3>
+                <p id="modal-desc" class="text-sm text-gray-500 mb-8 leading-relaxed">Deskripsi pesan konfirmasi di sini.</p>
+                <div class="flex gap-3">
+                    <button onclick="closeModalCustom()" class="flex-1 py-4 font-bold text-gray-400 active:bg-gray-50 rounded-2xl transition">Batal</button>
+                    <button id="modal-confirm-btn" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-bold shadow-lg active:scale-95 transition">Ya, Lanjut</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- COMPONENT: Bottom Sheet -->
+        <div id="bottom-sheet-overlay" class="fixed inset-0 z-[350] bg-black/40 hidden" onclick="closeBottomSheet()"></div>
+        <div id="bottom-sheet" class="fixed bottom-0 left-0 right-0 z-[360] bg-white rounded-t-[2.5rem] p-6 shadow-2xl translate-y-full transition-transform duration-300 ease-out flex flex-col gap-2 max-w-lg mx-auto">
+            <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <div id="sheet-content" class="flex flex-col gap-1">
+                <!-- Opsi Menu di sini -->
             </div>
         </div>
 
@@ -354,571 +251,10 @@
         Notification
     </div>
 
-    <script>
-        let peer, myId, activeConn, activeCall, localStream, db, sb;
-        let contacts = JSON.parse(localStorage.getItem('p2p_contacts') || '[]').filter(c => c && typeof c.id === 'string');
-        let isMic = true, isCam = true;
-        let ephemeralTimer;
-        let typingTimeout;
-
-        // KONFIGURASI SUPABASE (Ganti dengan milik Anda)
-        const supabaseUrl = 'https://peljkofgteuqedzfjlhi.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBlbGprb2ZndGV1cWVkemZqbGhpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNDE0NDcsImV4cCI6MjA4MzYxNzQ0N30.Gzmqx7CEudTjkjIjYuuuJ-tOk0tneWMOMK7j1a9QvpM';
-
-        lucide.createIcons();
-
-        // Inisialisasi Database (IndexedDB)
-        db = new Dexie("ChatProDB");
-        db.version(1).stores({
-            messages: '++id, peerId, sender, text, type, fileBlob, fileName, status, time, image_url, expires_at' 
-        });
-
-        // Auto Login
-        window.addEventListener('DOMContentLoaded', () => {
-            const savedId = localStorage.getItem('p2p_myid');
-            if(savedId) {
-                document.getElementById('my-display-id').innerText = savedId;
-                document.getElementById('my-avatar').innerText = savedId.charAt(0).toUpperCase();
-                document.getElementById('login-username').value = savedId;
-                initApp();
-            }
-            startEphemeralCleanup();
-        });
-
-        function initApp() {
-            const userIn = document.getElementById('login-username');
-            myId = userIn.value.trim().toLowerCase().replace(/\s+/g, '_');
-
-            if (myId.length < 3) return alert("ID terlalu pendek!");
-
-            // Inisialisasi Supabase
-            sb = supabase.createClient(supabaseUrl, supabaseKey);
-            localStorage.setItem('p2p_myid', myId);
-            setupRealtime();
-
-            peer = new Peer(myId, { debug: 1 });
-
-            peer.on('open', (id) => {
-                const loginScr = document.getElementById('screen-login');
-                loginScr.classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => loginScr.classList.add('hidden'), 500);
-                document.getElementById('screen-home').classList.remove('hidden');
-                document.getElementById('my-display-id').innerText = id;
-                document.getElementById('my-avatar').innerText = id.charAt(0).toUpperCase();
-                renderContacts();
-                showToast("Terhubung sebagai " + id);
-                if (Notification.permission !== 'granted') Notification.requestPermission();
-            });
-
-            peer.on('connection', (conn) => {
-                handleInboundConn(conn);
-            });
-
-            peer.on('call', async (call) => {
-                if(confirm(`Telepon dari ${call.peer}. Terima?`)) {
-                    await setupMedia(true);
-                    call.answer(localStream);
-                    manageCall(call);
-                }
-            });
-
-            peer.on('error', (err) => {
-                console.error('PeerJS Error:', err.type);
-                if(err.type === 'unavailable-id') alert("ID sudah ada yang pakai!");
-                else showToast("Koneksi gagal");
-            });
-
-            peer.on('disconnected', () => {
-                showToast("Koneksi terputus. Mencoba menyambung...");
-                peer.reconnect();
-            });
-        }
-
-        // PROFILE & SETTINGS
-        function openProfile() {
-            const screen = document.getElementById('screen-profile');
-            screen.classList.remove('hidden');
-            document.getElementById('profile-name').innerText = myId;
-            document.getElementById('profile-avatar-big').innerText = myId.charAt(0).toUpperCase();
-            setTimeout(() => screen.classList.remove('translate-x-full'), 10);
-            lucide.createIcons();
-        }
-        function closeProfile() {
-            const screen = document.getElementById('screen-profile');
-            screen.classList.add('translate-x-full');
-            setTimeout(() => screen.classList.add('hidden'), 300);
-        }
-        function logout() {
-            if(confirm("Keluar dari akun ini? Semua riwayat akan tetap ada kecuali Anda klik Bersihkan Chat.")) {
-                localStorage.removeItem('p2p_myid');
-                location.reload();
-            }
-        }
-
-        // CLEAR CHAT
-        async function clearCurrentChat() {
-            const peerId = document.getElementById('target-name').innerText;
-            if(confirm(`Hapus semua pesan dengan ${peerId}?`)) {
-                // Hapus Lokal
-                await db.messages.where('peerId').equals(peerId).delete();
-                // Hapus Supabase
-                try { await sb.from('messages').delete().or(`and(sender.eq.${myId},receiver.eq.${peerId}),and(sender.eq.${peerId},receiver.eq.${myId})`); } catch(e){}
-                renderMsgs(peerId);
-                toggleChatMenu();
-                showToast("Pesan dibersihkan");
-            }
-        }
-        async function clearAllLocalHistory() {
-            if(confirm("Hapus semua cache chat di HP ini?")) {
-                await db.messages.clear();
-                showToast("Cache dibersihkan");
-            }
-        }
-        function toggleChatMenu() { document.getElementById('chat-options-menu').classList.toggle('hidden'); }
-
-        // KONTAK
-        function openModalAdd() { document.getElementById('modal-add').classList.remove('hidden'); }
-        function closeModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
-
-        function confirmAddContact() {
-            const id = document.getElementById('add-id-input').value.trim().toLowerCase();
-            if(!id || id === myId) return;
-            if(!contacts.find(c => c.id === id)) {
-                contacts.push({ id });
-                localStorage.setItem('p2p_contacts', JSON.stringify(contacts));
-                renderContacts();
-            }
-            closeModalAdd();
-        }
-
-        function renderContacts() {
-            const list = document.getElementById('contact-list');
-            const empty = document.getElementById('empty-contacts');
-            list.innerHTML = "";
-            
-            if(contacts.length > 0) empty.classList.add('hidden');
-            else empty.classList.remove('hidden');
-
-            contacts.forEach(c => {
-                if (!c || !c.id) return;
-                const row = document.createElement('div');
-                row.className = "flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl active:bg-indigo-50 active:scale-[0.98] transition cursor-pointer";
-                row.onclick = () => openChat(c.id);
-                row.innerHTML = `
-                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold">${(c.id.charAt(0) || '?').toUpperCase()}</div>
-                    <div class="flex-1">
-                        <h4 class="font-bold text-gray-800">${c.id}</h4>
-                        <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Klik untuk chat</p>
-                    </div>
-                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
-                `;
-                list.appendChild(row);
-            });
-            lucide.createIcons();
-        }
-
-        // CHAT
-        async function openChat(id) {
-            if (!id) return;
-            const screen = document.getElementById('screen-chat');
-            
-            // 1. Tampilkan kontainer chat
-            screen.classList.remove('hidden');
-            
-            // 2. Animasi masuk
-            setTimeout(() => screen.classList.remove('translate-x-full'), 10);
-            
-            document.getElementById('target-name').innerText = id;
-            document.getElementById('target-avatar').innerText = (id.charAt(0) || '?').toUpperCase();
-            // Tampilkan pesan lokal segera agar UI tidak terlihat kosong/rusak
-            renderMsgs(id);
-
-            if(!activeConn || activeConn.peer !== id) {
-                if(activeConn) activeConn.close();
-                activeConn = peer.connect(id);
-                setupConnHandlers(activeConn);
-            }
-            
-            try {
-                await syncSupabaseHistory(id);
-                renderMsgs(id);
-            } catch (err) {
-                console.error("Gagal sinkronisasi history:", err);
-            }
-
-            lucide.createIcons();
-        }
-
-        function closeChat() {
-            const screen = document.getElementById('screen-chat');
-            screen.classList.add('translate-x-full');
-            setTimeout(() => screen.classList.add('hidden'), 300);
-        }
-
-        function setupConnHandlers(conn) {
-            conn.on('data', (data) => {
-                if (data.type === 'text' || data.type === 'image') {
-                    saveMsg(conn.peer, data, 'them').then(() => {
-                        if(document.getElementById('target-name').innerText === conn.peer) renderMsgs(conn.peer);
-                        else showNotification(conn.peer, data.text || "Mengirim gambar");
-                    });
-                    // Kirim Ack (Centang)
-                    conn.send({ type: 'ack', time: data.time });
-                } else if (data.type === 'typing') {
-                    updateTargetStatus(conn.peer, data.isTyping);
-                } else if (data.type === 'ack') {
-                    db.messages.where({peerId: conn.peer, time: data.time, sender: 'me'})
-                      .modify({status: 'delivered'})
-                      .then(() => renderMsgs(conn.peer)); //
-                }
-            });
-            
-            conn.on('close', () => showToast("Teman offline")); //
-        }
-
-        function handleInboundConn(conn) {
-            activeConn = conn;
-            setupConnHandlers(conn);
-            if(!contacts.find(c => c.id === conn.peer)) {
-                contacts.push({id: conn.peer});
-                localStorage.setItem('p2p_contacts', JSON.stringify(contacts));
-                renderContacts();
-            }
-        }
-
-        function sendMsg() {
-            const input = document.getElementById('chat-input');
-            const mode = document.getElementById('ephemeral-mode').value;
-            const txt = input.value.trim();
-            if(!txt || !activeConn) return;
-
-            let expiresAt = null;
-            if(mode === '24h') expiresAt = Date.now() + (24 * 60 * 60 * 1000);
-            if(mode === '10s') expiresAt = Date.now() + (10 * 1000);
-
-            const msgObj = { 
-                type: 'text', 
-                text: txt, 
-                time: Date.now(),
-                expires_at: expiresAt
-            };
-            
-            activeConn.send(msgObj);
-            saveMsg(activeConn.peer, msgObj, 'me').then(() => renderMsgs(activeConn.peer));
-            input.value = "";
-            document.getElementById('ephemeral-mode').value = 'none';
-
-            if (typingTimeout) {
-                clearTimeout(typingTimeout);
-                sendTypingStatus(false);
-            }
-        }
-
-        async function sendFile(file) {
-            if (!file || !activeConn) return;
-
-            // 1. Upload ke Supabase Storage
-            const filePath = `${myId}/${Date.now()}-${file.name}`;
-            const { data: uploadData, error: uploadError } = await sb.storage
-                .from('chat-images') // Ganti dengan nama bucket Anda
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-
-            if (uploadError) {
-                console.error('Error uploading image to Supabase:', uploadError);
-                showToast("Gagal mengunggah gambar.");
-                return;
-            }
-
-            // Dapatkan URL publik gambar
-            const { data: publicUrlData } = sb.storage.from('chat-images').getPublicUrl(filePath);
-            const imageUrl = publicUrlData.publicUrl;
-
-            // 2. Baca file untuk pengiriman P2P dan penyimpanan lokal (fileBlob)
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const msgObj = {
-                    type: 'image',
-                    fileBlob: e.target.result, // Data mentah untuk P2P dan IndexedDB lokal
-                    fileName: file.name,
-                    time: Date.now(),
-                    image_url: imageUrl // URL publik untuk Supabase dan IndexedDB lokal (setelah sinkronisasi)
-                };
-
-                // 3. Kirim via P2P
-                activeConn.send(msgObj);
-                // 4. Simpan secara lokal dan ke Supabase
-                await saveMsg(activeConn.peer, msgObj, 'me');
-                renderMsgs(activeConn.peer);
-            };
-            reader.readAsArrayBuffer(file); // Baca sebagai ArrayBuffer untuk P2P
-        }
-
-        async function saveMsg(peerId, data, sender) {
-            const msgTime = data.time || Date.now();
-            // 1. Simpan ke IndexedDB Lokal
-            const msgId = await db.messages.add({
-                peerId: peerId,
-                sender: sender,
-                text: data.text || null,
-                type: data.type,
-                fileBlob: data.fileBlob || null,
-                image_url: data.image_url || null,
-                status: sender === 'me' ? 'sent' : 'received',
-                time: msgTime,
-                expires_at: data.expires_at || null
-            });
-
-            // 2. Simpan ke Supabase
-            const payload = {
-                sender: sender === 'me' ? myId : peerId,
-                receiver: sender === 'me' ? peerId : myId,
-                type: data.type,
-                created_at: new Date(msgTime).toISOString(),
-                expires_at: data.expires_at ? new Date(data.expires_at).toISOString() : null
-            };
-            if (data.type === 'text') payload.content = data.text;
-            if (data.type === 'image' && data.image_url) payload.image_url = data.image_url;
-
-            const { error } = await sb.from('messages').insert([payload]);
-            if (error) console.error("Supabase Save Error:", error);
-            
-            return msgId;
-        }
-
-        async function syncSupabaseHistory(friendId) {
-            const { data, error } = await sb
-                .from('messages')
-                .select('*, created_at') // Pilih semua kolom, termasuk type dan image_url
-                .or(`and(sender.eq.${myId},receiver.eq.${friendId}),and(sender.eq.${friendId},receiver.eq.${myId})`)
-                .order('created_at', { ascending: true });
-
-            if (data) {
-                for (const msg of data) {
-                    const msgTime = new Date(msg.created_at).getTime();
-                    // Cek duplikasi berdasarkan timestamp
-                    const exists = await db.messages.where('time').equals(msgTime).first();
-                    if (!exists) {
-                        await db.messages.add({
-                            peerId: friendId,
-                            sender: msg.sender === myId ? 'me' : 'them',
-                            text: msg.content,
-                            type: msg.type, // Simpan tipe pesan dari Supabase
-                            status: 'delivered',
-                            time: msgTime,
-                            image_url: msg.image_url || null // Simpan URL gambar dari Supabase
-                        });
-                    }
-                }
-            }
-        }
-
-        function setupRealtime() {
-            sb.channel('public:messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-                    const msg = payload.new;
-                    if (msg.receiver === myId) {
-                        // Hanya proses jika P2P sedang tidak aktif/terputus sebagai fallback
-                        if (!activeConn || !activeConn.open) {
-                            const notificationText = msg.type === 'image' ? "Mengirim gambar" : msg.content;
-                            showNotification(msg.sender, notificationText);
-                            // Sinkronkan ke UI jika sedang membuka chat orang tsb
-                            if (document.getElementById('target-name').innerText === msg.sender) {
-                                // Langsung tambahkan pesan baru ke IndexedDB dan render
-                                db.messages.add({
-                                    peerId: msg.sender,
-                                    sender: 'them',
-                                    text: msg.content || null,
-                                    type: msg.type,
-                                    fileBlob: null, // Pesan dari Supabase tidak memiliki fileBlob
-                                    fileName: null,
-                                    status: 'delivered',
-                                    time: new Date(msg.created_at).getTime(),
-                                    image_url: msg.image_url || null,
-                                    expires_at: msg.expires_at ? new Date(msg.expires_at).getTime() : null
-                                }).then(() => renderMsgs(msg.sender));
-                            }
-                        }
-                    }
-                })
-                .subscribe();
-        }
-
-        // Ephemeral Worker
-        function startEphemeralCleanup() {
-            setInterval(async () => {
-                const now = Date.now();
-                const expired = await db.messages.where('expires_at').below(now).toArray();
-                if(expired.length > 0) {
-                    for(let m of expired) {
-                        await db.messages.delete(m.id);
-                        // Juga hapus di server jika pengirimnya adalah saya
-                        if(m.sender === 'me') {
-                            await sb.from('messages').delete().eq('created_at', new Date(m.time).toISOString());
-                        }
-                    }
-                    const targetId = document.getElementById('target-name').innerText;
-                    if(targetId) renderMsgs(targetId);
-                }
-            }, 1000);
-        }
-
-        async function renderMsgs(id) {
-            const box = document.getElementById('chat-messages');
-            const isAtBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
-            
-            const msgs = await db.messages.where('peerId').equals(id).toArray();
-            box.innerHTML = "";
-            
-            msgs.forEach(m => {
-                if(m.expires_at && Date.now() > m.expires_at) return;
-
-                const d = document.createElement('div');
-                d.className = `flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`;
-                
-                let ephemeralUI = "";
-                if(m.expires_at) {
-                    const diff = Math.max(0, Math.floor((m.expires_at - Date.now()) / 1000));
-                    const icon = diff > 60 ? "clock" : "timer";
-                    const label = diff > 60 ? "24 Jam" : `${diff}s`;
-                    ephemeralUI = `<div class="ephemeral-badge"><i data-lucide="${icon}" class="w-3 h-3"></i> ${label}</div>`;
-                }
-                
-                let content = m.text;
-                if (m.type === 'image') {
-                    let imageUrlToDisplay;
-                    if (m.image_url) {
-                        imageUrlToDisplay = m.image_url; // Prioritaskan URL dari Supabase
-                    } else if (m.fileBlob) {
-                        imageUrlToDisplay = URL.createObjectURL(new Blob([m.fileBlob])); // Fallback ke Blob lokal
-                    }
-                    if (imageUrlToDisplay) {
-                        content = `<img src="${imageUrlToDisplay}" class="rounded-lg max-w-full h-auto mt-1 mb-1 shadow-sm" ${m.fileBlob ? `onload="URL.revokeObjectURL('${imageUrlToDisplay}')"` : ''}>`;
-                    } else {
-                        content = "Gambar tidak tersedia"; // Fallback jika tidak ada URL atau Blob
-                    }
-                }
-
-                const timeStr = new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                const statusIcon = m.sender === 'me' ? (m.status === 'delivered' ? '✓✓' : '✓') : '';
-
-                d.innerHTML = `
-                    <div class="message-bubble shadow-sm ${m.sender === 'me' ? 'bg-indigo-600 text-white bubble-me' : 'bg-white text-gray-800 bubble-them border border-gray-100'}">
-                        ${ephemeralUI}
-                        ${content}
-                        <div class="text-[9px] mt-1 opacity-50 text-right font-bold">${timeStr} ${statusIcon}</div>
-                    </div>
-                `;
-                box.appendChild(d);
-            });
-            lucide.createIcons();
-            if (isAtBottom) box.scrollTop = box.scrollHeight;
-        }
-
-        function updateTargetStatus(peerId, isTyping) {
-            const statusEl = document.getElementById('target-status');
-            if (document.getElementById('target-name').innerText === peerId) {
-                statusEl.innerText = isTyping ? "Sedang mengetik..." : "P2P Terhubung";
-                statusEl.classList.toggle('text-green-500', isTyping);
-            }
-        }
-
-        function sendTypingStatus(isTyping) {
-            if (activeConn && activeConn.open) {
-                activeConn.send({ type: 'typing', isTyping });
-            }
-        }
-
-        // Event Listener untuk Mengetik
-        document.getElementById('chat-input').addEventListener('input', () => {
-            sendTypingStatus(true);
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                sendTypingStatus(false);
-            }, 2000);
-        });
-
-        function showNotification(sender, text) {
-            if (Notification.permission === 'granted' && document.hidden) {
-                new Notification(`Pesan dari ${sender}`, { body: text });
-            } else {
-                showToast(`Pesan baru dari ${sender}`);
-            }
-        }
-
-        // CALL
-        async function setupMedia(video) {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ video: video, audio: true });
-                document.getElementById('local-video-pip').srcObject = localStream;
-            } catch(e) { showToast("Gagal akses media"); }
-        }
-
-        async function startCall(type) {
-            const id = document.getElementById('target-name').innerText;
-            await setupMedia(type === 'video');
-            document.getElementById('screen-call').classList.remove('hidden');
-            document.getElementById('call-target-name').innerText = id;
-            
-            const call = peer.call(id, localStream);
-            manageCall(call);
-        }
-
-        function manageCall(call) {
-            activeCall = call;
-            document.getElementById('screen-call').classList.remove('hidden');
-            call.on('stream', (rem) => {
-                document.getElementById('remote-video').srcObject = rem;
-            });
-            call.on('close', endCall);
-        }
-
-        function endCall() {
-            if(activeCall) activeCall.close();
-            if(localStream) localStream.getTracks().forEach(t => t.stop());
-            document.getElementById('screen-call').classList.add('hidden');
-            showToast("Panggilan berakhir");
-        }
-
-        function toggleMic() {
-            isMic = !isMic;
-            localStream.getAudioTracks()[0].enabled = isMic;
-            document.getElementById('mic-toggle').innerHTML = `<i data-lucide="${isMic ? 'mic' : 'mic-off'}"></i>`;
-            lucide.createIcons();
-        }
-
-        function toggleCam() {
-            isCam = !isCam;
-            localStream.getVideoTracks()[0].enabled = isCam;
-            document.getElementById('cam-toggle').innerHTML = `<i data-lucide="${isCam ? 'video' : 'video-off'}"></i>`;
-            lucide.createIcons();
-        }
-
-        function showToast(m) {
-            const t = document.getElementById('toast');
-            t.innerText = m;
-            t.classList.replace('opacity-0', 'opacity-100');
-            t.classList.replace('translate-y-10', 'translate-y-0');
-            setTimeout(() => {
-                t.classList.replace('opacity-100', 'opacity-0');
-                t.classList.replace('translate-y-0', 'translate-y-10');
-            }, 3000);
-        }
-
-        // Keyboard Enter
-        document.getElementById('chat-input').addEventListener('keypress', (e) => e.key === 'Enter' && sendMsg());
-        document.getElementById('login-username').addEventListener('keypress', (e) => e.key === 'Enter' && initApp());
-
-        // Memperbaiki tampilan saat keyboard muncul di mobile
-        if ('visualViewport' in window) {
-            window.visualViewport.addEventListener('resize', () => {
-                const height = window.visualViewport.height;
-                document.getElementById('main-app').style.height = height + 'px';
-            });
-        }
-
-    </script>
+    <script src="contacts.js?v=1.2"></script>
+    <script src="chat.js?v=1.2"></script>
+    <script src="calls.js?v=1.2"></script>
+    <script src="ui.js?v=1.2"></script>
+    <script src="app.js?v=1.2"></script>
 </body>
 </html>
