@@ -263,14 +263,14 @@ function startEphemeralCleanup() {
                     }
                 }
             }
-
-            // Auto-refresh chat UI setiap detik jika ada chat yang terbuka untuk memperbarui timer
-            const targetId = document.getElementById('target-name').innerText;
-            const screenChat = document.getElementById('screen-chat');
-            if (targetId && targetId !== "Nama Teman" && !screenChat.classList.contains('hidden')) {
-                renderMsgs(targetId);
-            }
         } catch (e) { console.error("Cleanup error:", e); }
+
+        // Auto-refresh chat UI setiap detik jika ada chat yang terbuka untuk memperbarui timer
+        const targetId = document.getElementById('target-name').innerText;
+        const screenChat = document.getElementById('screen-chat');
+        if (targetId && targetId !== "Nama Teman" && !screenChat.classList.contains('hidden')) {
+            renderMsgs(targetId);
+        }
     }, 1000);
 }
 
