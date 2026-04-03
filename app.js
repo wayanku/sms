@@ -116,4 +116,4 @@ if ('visualViewport' in window) {
         const height = window.visualViewport.height;
         document.getElementById('main-app').style.height = height + 'px';
     });
-}  .
+}
