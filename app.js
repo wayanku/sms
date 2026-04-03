@@ -118,6 +118,10 @@ lucide.createIcons();
 
 // Visual viewport resize fix
 if ('visualViewport' in window) {
+    const handleViewport = () => {
+        const vv = window.visualViewport;
+        const mainApp = document.getElementById('main-app');
+        if (mainApp) {
             mainApp.style.height = vv.height + 'px';
             // Mencegah konten bergeser ke atas secara tidak sengaja di iOS
             window.scrollTo(0, 0);
