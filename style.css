@@ -61,11 +61,20 @@ input, select, textarea { font-size: 16px !important; }
     font-size: 15px;
     line-height: 1.4;
 }
+.message-bubble.bubble-me {
+    border-bottom-right-radius: 4px; /* Chats+ style */
+}
+.message-bubble.bubble-them {
+    border-bottom-left-radius: 4px; /* Chats+ style */
+}
 
-.page-slide { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.page-slide { 
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease; 
+}
 
 .ephemeral-badge {
     font-size: 9px;
+    color: #fff;
     padding: 2px 6px;
     border-radius: 10px;
     background: rgba(0,0,0,0.1);
@@ -76,8 +85,9 @@ input, select, textarea { font-size: 16px !important; }
 }
 
 .setting-item { @apply flex items-center gap-4 p-4 active:bg-gray-50 transition border-b border-gray-50; }
-.glass-header { @apply bg-white/90 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100; }
-.action-btn { @apply p-2.5 rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-90; }
+.glass-header { @apply bg-white/90 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100 shadow-sm; }
+.action-btn { @apply w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-90; }
+.action-btn-alt { @apply p-2 rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-90; }
 
 footer {
     flex-shrink: 0; 
@@ -89,6 +99,14 @@ footer {
     touch-action: pan-y;
     transition: transform 0.2s;
     position: relative;
+}
+
+.message-bubble .bubble-time {
+    font-size: 9px;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: right;
+    display: block;
 }
 
 .reply-preview {
@@ -134,4 +152,22 @@ nav i {
 
 .sheet-item-red {
     @apply text-red-600 active:bg-red-50;
+}
+
+/* Chats+ Pill Filters */
+.pill-active {
+    background-color: #4f46e5; /* indigo-600 */
+    color: white;
+}
+.pill-inactive {
+    background-color: #f3f4f6; /* gray-100 */
+    color: #4b5563; /* gray-600 */
+}
+.pill-inactive:hover {
+    background-color: #e5e7eb;
+}
+
+/* Circular Avatar */
+.avatar-circle {
+    border-radius: 9999px; /* rounded-full */
 }
