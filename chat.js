@@ -1,12 +1,15 @@
 async function openChat(id) {
     if (!id) return;
     const screen = document.getElementById('screen-chat');
+    const contact = contacts.find(c => c.id === id);
+    const displayName = contact ? (contact.name || contact.id) : id;
     screen.classList.remove('hidden');
     setTimeout(() => screen.classList.remove('translate-x-full'), 10);
     
-    document.getElementById('target-name').innerText = id;
-    document.getElementById('target-avatar').innerText = id.charAt(0).toUpperCase();
+    document.getElementById('target-name').innerText = displayName;
+    document.getElementById('target-avatar').innerText = displayName.charAt(0).toUpperCase();
     renderMsgs(id);
+    markMessagesAsRead(id); // Tandai pesan sebagai sudah dibaca
 
     if(!activeConn || activeConn.peer !== id) {
         if(activeConn) activeConn.close();
@@ -15,6 +18,7 @@ async function openChat(id) {
     }
     await syncSupabaseHistory(id);
     lucide.createIcons();
+    updateTargetStatus(id, false); // Set initial status
 }
 
 function closeChat() {
@@ -53,10 +57,15 @@ function setupConnHandlers(conn) {
 function sendMsg() {
     const input = document.getElementById('chat-input');
     const txt = input.value.trim();
-    const mode = document.getElementById('ephemeral-mode').value;
+    const modeEl = document.getElementById('ephemeral-mode');
+    const mode = modeEl ? modeEl.value : 'none';
     if(!txt || !activeConn) return;
 
-    let expiresAt = mode === '10s' ? Date.now() + 10000 : (mode === '24h' ? Date.now() + 86400000 : null);
+    // Default: Paksa hapus setelah 3 hari jika mode 'none' dipilih (untuk hemat DB)
+    const forcedTTL = 3 * 24 * 60 * 60 * 1000; 
+    let expiresAt = mode === '10s' ? Date.now() + 10000 : 
+                    (mode === '24h' ? Date.now() + 86400000 : 
+                    Date.now() + forcedTTL);
 
     const msgObj = { 
         type: 'text', text: txt, time: Date.now(), expires_at: expiresAt,
@@ -71,13 +80,23 @@ function sendMsg() {
 
 async function saveMsg(peerId, data, sender) {
     const msgTime = data.time || Date.now();
+    // Pastikan selalu ada masa berlaku untuk mencegah tumpukan di Supabase
+    const forcedTTL = 3 * 24 * 60 * 60 * 1000;
+    const finalExpiresAt = data.expires_at || (msgTime + forcedTTL);
+
     await db.messages.add({
-        peerId, sender, text: data.text, type: data.type, 
-        time: msgTime, expires_at: data.expires_at, replyTo: data.replyTo,
-        status: sender === 'me' ? 'sent' : 'received'
+        peerId, 
+        sender, 
+        text: data.text, 
+        type: data.type, 
+        time: msgTime, 
+        expires_at: finalExpiresAt, 
+        replyTo: data.replyTo,
+        isRead: sender === 'me' ? 1 : 0 // Pesan kita sendiri otomatis dianggap sudah dibaca (1=true, 0=false)
     });
 
-    if (data.type === 'text') {
+    // Hanya kirim ke Supabase jika pesan berasal dari kita (mencegah loop)
+    if (data.type === 'text' && sender === 'me') {
         await sb.from('messages').insert([{
             sender: sender === 'me' ? myId : peerId,
             receiver: sender === 'me' ? peerId : myId,
@@ -104,14 +123,24 @@ async function syncSupabaseHistory(friendId) {
                     peerId: friendId,
                     sender: msg.sender === myId ? 'me' : 'them',
                     text: msg.content,
-                    type: msg.type,
+                    type: msg.type || 'text', // Ensure type is set
                     status: 'delivered',
                     time: msgTime,
-                    image_url: msg.image_url || null
+                    image_url: msg.image_url || null,
+                    isRead: msg.sender === myId ? 1 : 0 // Set isRead during sync
                 });
             }
         }
     }
+}
+
+async function markMessagesAsRead(peerId) {
+    await db.messages
+        .where({ peerId: peerId, sender: 'them', isRead: 0 }) // Query for isRead: 0
+        .modify({ isRead: 1 }); // Set to isRead: 1
+    
+    // Perbarui tampilan daftar kontak untuk menghilangkan badge unread
+    renderRecentChats(); // Refresh only recent chats
 }
 
 async function deleteMsg(m, mode) {
@@ -126,7 +155,7 @@ async function deleteMsg(m, mode) {
 function updateTargetStatus(peerId, isTyping) {
     const statusEl = document.getElementById('target-status');
     if (document.getElementById('target-name').innerText === peerId) {
-        statusEl.innerText = isTyping ? "Sedang mengetik..." : "P2P Terhubung";
+        statusEl.innerText = isTyping ? "sedang mengetik..." : "online"; // Chats+ style
         statusEl.classList.toggle('text-indigo-500', !isTyping);
         statusEl.classList.toggle('text-green-500', isTyping);
     }
@@ -156,6 +185,11 @@ function showMessageOptions(m) {
         <button onclick='handleSheetAction("reply", ${m.id})' class="sheet-item text-gray-700">
             <i data-lucide="reply"></i> Balas Pesan
         </button>
+        ${m.type === 'image' ? `
+        <button onclick='handleSheetAction("download_img", ${m.id})' class="sheet-item text-gray-700">
+            <i data-lucide="download"></i> Simpan Gambar
+        </button>
+        ` : ''}
         <button onclick='handleSheetAction("delete_me", ${m.id})' class="sheet-item text-gray-700">
             <i data-lucide="trash"></i> Hapus untuk Saya
         </button>
@@ -172,8 +206,19 @@ function handleSheetAction(action, id) {
     const m = window.lastSelectedMsg;
     closeBottomSheet();
     if(action === 'reply') setReply(m);
+    if(action === 'download_img') downloadImage(m.text, `ChatsPlus_${m.time}.png`);
     if(action === 'delete_me') deleteMsg(m, 'me');
     if(action === 'delete_all') deleteMsg(m, 'everyone');
+}
+
+function downloadImage(base64Data, filename) {
+    const link = document.createElement('a');
+    link.href = base64Data;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Gambar berhasil disimpan");
 }
 
 async function renderMsgs(id) {
@@ -213,7 +258,8 @@ async function renderMsgs(id) {
         };
 
         let ephemeralUI = "";
-        if(m.expires_at) {
+        if(m.expires_at && (m.expires_at - m.time < 2 * 24 * 60 * 60 * 1000)) {
+            // Hanya tampilkan badge jika masa berlaku < 2 hari (berarti mode ephemeral aktif)
             const diff = Math.max(0, Math.floor((m.expires_at - Date.now()) / 1000));
             const icon = diff > 60 ? "clock" : "timer";
             const label = diff > 60 ? "24 Jam" : `${diff}s`;
@@ -223,17 +269,46 @@ async function renderMsgs(id) {
         let replyUI = m.replyTo ? `<div class="bg-black/5 p-2 rounded-lg border-l-2 border-indigo-400 mb-2 opacity-70 italic text-[11px]"><div class="font-bold text-indigo-600 not-italic">${m.replyTo.sender}</div>${m.replyTo.text}</div>` : "";
         let timeStr = new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
         
+        let contentHTML = m.text;
+        let viewOnceLabel = "";
+        if (m.type === 'image') {
+            contentHTML = `<img src="${m.text}" class="rounded-lg max-w-full h-auto mb-1 shadow-sm border border-black/5 cursor-pointer" style="max-height: 250px" onclick="openImagePreview('${m.text}', '${m.time}')">`;
+            if (m.isViewOnce) {
+                viewOnceLabel = `<div class="text-[10px] font-bold text-indigo-300 flex items-center gap-1 mb-1"><i data-lucide="eye" class="w-3 h-3"></i> Sekali Lihat</div>`;
+            }
+        }
+        
         wrapper.innerHTML = `
             <div class="message-bubble shadow-sm ${m.sender==='me'?'bg-indigo-600 text-white bubble-me':'bg-white text-gray-800 bubble-them border border-gray-100'}">
-                ${ephemeralUI}
-                ${replyUI}${m.text}
-                <div class="text-[9px] mt-1 opacity-50 text-right font-bold">${timeStr} ${m.sender==='me'?(m.status==='delivered'?'✓✓':'✓'):''}</div>
+                ${ephemeralUI}${viewOnceLabel}
+                ${replyUI}${contentHTML}
+                <span class="bubble-time">${timeStr} ${m.sender==='me'?(m.status==='delivered'?'✓✓':'✓'):''}</span>
             </div>`;
         box.appendChild(wrapper);
     });
     box.scrollTop = box.scrollHeight;
     lucide.createIcons();
 }
+
+function openImagePreview(base64Data, timestamp) {
+    const modal = document.getElementById('image-preview-modal');
+    const img = document.getElementById('image-preview-img');
+    const downloadBtn = document.getElementById('download-image-btn');
+
+    img.src = base64Data;
+    downloadBtn.onclick = () => downloadImage(base64Data, `ChatsPlus_${timestamp}.png`);
+
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function closeImagePreview() {
+    const modal = document.getElementById('image-preview-modal');
+    const img = document.getElementById('image-preview-img');
+    img.src = ""; // Clear image source
+    modal.classList.add('hidden');
+}
+
 
 function clearChatAction(mode) {
     const peerId = document.getElementById('target-name').innerText;
@@ -265,13 +340,51 @@ function startEphemeralCleanup() {
             }
         } catch (e) { console.error("Cleanup error:", e); }
 
-        // Auto-refresh chat UI setiap detik jika ada chat yang terbuka untuk memperbarui timer
         const targetId = document.getElementById('target-name').innerText;
         const screenChat = document.getElementById('screen-chat');
         if (targetId && targetId !== "Nama Teman" && !screenChat.classList.contains('hidden')) {
-            renderMsgs(targetId);
+            // Hanya refresh UI jika ada pesan yang akan kadaluarsa dalam waktu dekat (< 1 menit)
+            const hasUrgent = await db.messages
+                .where('peerId').equals(targetId)
+                .and(m => m.expires_at && (m.expires_at - now) < 60000)
+                .count();
+            if (hasUrgent > 0) renderMsgs(targetId);
         }
     }, 1000);
+}
+
+async function sendFile(file, isViewOnce = false) {
+    if (!file) return;
+
+    // Jika belum konfirmasi view once, tanya dulu (atau tambahkan toggle di UI)
+    if(!isViewOnce && confirm("Kirim sebagai foto Sekali Lihat (1x)?")) isViewOnce = true;
+
+    if (!activeConn || !activeConn.open) {
+        showToast("Gagal: Harus terhubung P2P untuk kirim gambar.");
+        return;
+    }
+    // Batasi ukuran gambar (misal 1MB) untuk menjaga kestabilan transmisi data string P2P
+    if (file.size > 1024 * 1024) {
+        showToast("Ukuran gambar terlalu besar (Maks 1MB)");
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const base64 = e.target.result;
+        const msgObj = { 
+            type: 'image', 
+            text: base64, // Simpan data base64 di field text
+            time: Date.now(),
+            expires_at: Date.now() + (3 * 24 * 60 * 60 * 1000) // Default 3 hari
+        };
+        
+        activeConn.send(msgObj);
+        await saveMsg(activeConn.peer, msgObj, 'me');
+        renderMsgs(activeConn.peer);
+        document.getElementById('file-input').value = ""; // Reset input file
+    };
+    reader.readAsDataURL(file);
 }
 
 // Event Listeners
