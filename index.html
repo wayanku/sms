@@ -81,7 +81,7 @@
 
         /* Menangani Safe Area untuk iPhone X+ dan Android Modern */
         .safe-pt { padding-top: max(1.2rem, env(safe-area-inset-top)) !important; }
-        .safe-pb { padding-bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 15px) !important; }
+        .safe-pb { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important; }
 
         #main-app { height: 100dvh; }
 
@@ -304,9 +304,17 @@
         <div id="screen-call" class="absolute inset-0 z-[200] bg-black hidden flex flex-col">
             <video id="remote-video" class="remote-video-fullscreen" autoplay playsinline></video>
             <video id="local-video-pip" autoplay muted playsinline></video>
-            <div class="absolute inset-0 flex flex-col items-center justify-between py-20 px-10">
-                <div class="text-center safe-pt">...</div>
-                <div class="flex gap-6 items-center">...</div>
+            <div class="absolute inset-0 flex flex-col items-center justify-between py-12 px-6">
+                <div class="text-center safe-pt text-white">
+                    <h2 id="call-target-name" class="text-2xl font-bold mb-1">...</h2>
+                    <p class="text-sm opacity-70 animate-pulse">Panggilan Berlangsung</p>
+                </div>
+                <div class="flex gap-4 items-center mb-8">
+                    <button onclick="toggleMic()" id="mic-toggle" class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"><i data-lucide="mic"></i></button>
+                    <button onclick="endCall()" class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white shadow-xl"><i data-lucide="phone-off" class="w-8 h-8"></i></button>
+                    <button onclick="toggleCam()" id="cam-toggle" class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"><i data-lucide="video"></i></button>
+                    <button onclick="switchCamera()" class="w-14 h-14 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"><i data-lucide="refresh-cw"></i></button>
+                </div>
             </div>
         </div>
 
