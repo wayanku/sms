@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="ConnectPro">
-    <title>Chat P2P Pro</title>
+    <meta name="apple-mobile-web-app-title" content="Chats+">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/733/733585.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/733/733585.png">
+    <title>Chats+</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -15,25 +18,88 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css?v=1.2"> 
     <style>
-        /* Menangani Safe Area untuk iPhone X+ dan Android Modern */
-        .safe-pt { padding-top: max(1rem, env(safe-area-inset-top)) !important; }
-        .safe-pb { padding-bottom: max(0.75rem, env(safe-area-inset-bottom)) !important; }
-        #main-app { 
-            height: 100dvh; /* Menggunakan Dynamic Viewport Height */
+        /* Desktop Optimization: Split View */
+        @media (min-width: 1024px) {
+            body {
+                background: #f0f2f5;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            #main-app {
+                max-width: 1400px !important;
+                width: 95vw !important;
+                height: 90vh !important;
+                flex-direction: row !important;
+                border-radius: 1.5rem;
+                box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            }
+            /* Sidebar (Home/Contacts) */
+            #screen-home {
+                position: relative !important;
+                width: 400px !important;
+                flex-shrink: 0;
+                display: flex !important;
+                border-right: 1px solid #eee;
+                z-index: 20;
+            }
+            /* Main Chat Area */
+            #screen-chat {
+                position: relative !important;
+                flex: 1 !important;
+                display: flex !important;
+                transform: none !important;
+                z-index: 10;
+                background: #fff;
+            }
+            /* Sembunyikan tombol kembali di desktop karena side-by-side */
+            button[onclick="closeChat()"] { display: none !important; }
         }
+
+        /* Telegram-style Shred/Destruction Animation */
+        @keyframes shred {
+            0% { transform: scale(1); opacity: 1; filter: blur(0); }
+            100% { transform: scale(1.1); opacity: 0; filter: blur(10px) brightness(2); }
+        }
+        .shredding { animation: shred 0.6s ease-out forwards; pointer-events: none; }
+
+        /* Premium Badge Animation */
+        @keyframes premium-glow {
+            0% { filter: drop-shadow(0 0 2px #8b5cf6); }
+            50% { filter: drop-shadow(0 0 8px #c084fc); }
+            100% { filter: drop-shadow(0 0 2px #8b5cf6); }
+        }
+        .premium-star {
+            display: inline-flex;
+            align-items: center;
+            color: #a855f7;
+            animation: premium-glow 2s infinite;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        /* Menangani Safe Area untuk iPhone X+ dan Android Modern */
+        .safe-pt { padding-top: max(1.2rem, env(safe-area-inset-top)) !important; }
+        .safe-pb { padding-bottom: calc(max(1.25rem, env(safe-area-inset-bottom)) + 15px) !important; }
+
+        #main-app { height: 100dvh; }
+
+        /* Memastikan footer chat selalu berada di lapisan atas dan tidak tertutup */
+        #screen-chat footer { z-index: 50; position: relative; }
     </style>
 </head>
-<body class="h-screen overflow-hidden flex flex-col bg-gray-50">
+<body class="min-h-[100dvh] overflow-hidden flex flex-col bg-gray-50">
 
     <!-- Container Utama -->
-    <div id="main-app" class="relative flex-1 w-full max-w-lg mx-auto bg-white flex flex-col h-full overflow-hidden shadow-2xl">
+    <div id="main-app" class="relative flex-1 w-full lg:max-w-screen-xl mx-auto bg-white flex flex-col h-full overflow-hidden">
 
         <!-- SCREEN: Login/Set Username -->
-        <div id="screen-login" class="fixed inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-800 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
+        <div id="screen-login" class="absolute inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
             <div class="mb-8 p-6 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
                 <i data-lucide="shield-check" class="w-16 h-16"></i>
             </div>
-            <h1 class="text-3xl font-extrabold mb-2">ConnectPro</h1>
+            <h1 class="text-3xl font-extrabold mb-2">Chats+</h1>
             <p class="text-indigo-100 text-center mb-10 text-sm opacity-80">Masukkan nama unik Anda untuk mulai mengobrol secara privat.</p>
             
             <div class="w-full space-y-4">
@@ -48,97 +114,123 @@
 
         <!-- SCREEN: Home (Contact List) -->
         <div id="screen-home" class="absolute inset-0 z-10 flex flex-col bg-white hidden h-full">
-            <header class="safe-pt px-6 pb-4 glass-header flex justify-between items-center flex-shrink-0">
-                <div class="flex items-center gap-3">
-                    <div id="my-avatar" class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md transition">
-                        ?
-                    </div>
-                    <div>
-                        <h2 id="my-display-id" class="font-bold text-gray-900 leading-tight">Username</h2>
-                        <span class="text-[10px] font-bold text-green-500 uppercase">● Online</span>
-                    </div>
+            <!-- Header for Chats Tab -->
+            <header id="main-header" class="safe-pt px-4 pb-4 glass-header flex justify-between items-center flex-shrink-0">
+                <h1 id="header-title" class="text-2xl font-extrabold text-gray-900">Chats+</h1>
+                <div class="flex gap-1">
+                    <button class="action-btn"><i data-lucide="search" class="w-6 h-6"></i></button>
+                    <button onclick="openModalAdd()" class="action-btn"><i data-lucide="square-pen" class="w-6 h-6"></i></button>
                 </div>
-                <button onclick="openModalAdd()" class="action-btn bg-gray-50"><i data-lucide="plus" class="w-6 h-6"></i></button>
             </header>
 
-            <div id="tab-content-chats" class="flex-1 overflow-y-auto px-6 py-4">
-                <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-4">Percakapan</h3>
-                <div id="contact-list" class="space-y-3"></div>
-                <div id="empty-contacts" class="flex flex-col items-center justify-center p-10 text-center opacity-30 hidden">
-                    <i data-lucide="users" class="w-16 h-16 mb-4"></i>
-                    <p class="font-semibold">Belum ada kontak.</p>
+            <!-- Tab Content: Chats -->
+            <div id="tab-content-chats" class="flex-1 overflow-y-auto">
+                <div class="relative px-4 mb-4">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-7 text-gray-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <input type="text" id="search-chat-input" placeholder="Cari pesan atau nama..."
+                        class="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-semibold transition-all"
+                        oninput="renderRecentChats(this.value)">
                 </div>
+
+                <!-- Filter kategori pesan -->
+                <div id="filter-pills" class="px-4 mb-4 flex gap-2 overflow-x-auto scrollbar-hide">
+                    <button onclick="updateFilter(this, 'all')" class="pill-active px-4 py-1.5 rounded-full text-xs font-bold transition-all">Semua</button>
+                    <button onclick="updateFilter(this, 'unread')" class="pill-inactive px-4 py-1.5 rounded-full text-xs font-bold transition-all">Belum Dibaca <span id="unread-total-badge" class="ml-1 text-white bg-red-500 rounded-full px-1.5 py-0.5 text-[9px] hidden"></span></button>
+                    <button class="pill-inactive px-4 py-1.5 rounded-full text-xs font-bold opacity-50 cursor-not-allowed">Grup <span class="ml-1 text-white bg-gray-400 rounded-full px-1.5 py-0.5 text-[9px] hidden"></span></button>
+                </div>
+
+                <div id="contact-list" class="bg-white"></div>
+                <div id="empty-contacts" class="flex flex-col items-center justify-center p-10 text-center opacity-30 hidden">
+                    <i data-lucide="message-square" class="w-16 h-16 mb-4 text-gray-300"></i>
+                    <p class="font-semibold">Belum ada percakapan.</p>
+                </div>
+            </div>
+
+            <!-- Tab Content: All Contacts -->
+            <div id="tab-content-contacts" class="flex-1 overflow-y-auto hidden">
+                <div class="relative mb-6">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-8 text-gray-400">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </span>
+                    <div class="px-4 pt-4">
+                        <input type="text" id="search-contact-input" placeholder="Cari nama kontak..."
+                            class="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-semibold transition-all" 
+                            oninput="renderContacts(this.value)">
+                    </div>
+                </div>
+                <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-3 px-4">Semua Kontak</h3>
+                <div id="all-contacts-list" class="bg-white border-t border-gray-50"></div>
             </div>
 
             <div id="tab-content-calls" class="flex-1 overflow-y-auto hidden">
                 <div id="call-history-list" class="divide-y divide-gray-50"></div>
             </div>
 
+            <!-- Tab Content: Settings -->
+            <div id="tab-content-settings" class="flex-1 overflow-y-auto hidden bg-gray-50">
+                <div class="py-10 flex flex-col items-center bg-white border-b mb-3 shadow-sm">
+                    <div id="profile-avatar-big" class="w-24 h-24 bg-indigo-600 rounded-full flex items-center justify-center text-4xl text-white font-bold shadow-lg mb-4 ring-4 ring-indigo-50">?</div>
+                    <h3 id="profile-name" class="text-2xl font-black text-gray-900">User ID</h3>
+                    <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest mt-1">Akun Personal</p>
+                </div>
+                
+                <div class="bg-white border-y border-gray-100 mb-4 shadow-sm">
+                    <div class="setting-item">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i data-lucide="bell" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-gray-800">Notifikasi</h4><p class="text-[11px] text-gray-400">Suara dan getaran</p></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </div>
+                    <div class="setting-item">
+                        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i data-lucide="shield" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-gray-800">Keamanan P2P</h4><p class="text-[11px] text-gray-400">Enkripsi End-to-End aktif</p></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </div>
+                    <div class="setting-item" onclick="clearAllLocalHistory()">
+                        <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-orange-600">Bersihkan Chat</h4><p class="text-[11px] text-gray-400">Hapus cache data lokal</p></div>
+                    </div>
+                </div>
+
+                <div class="bg-white border-y border-gray-100 mb-3 shadow-sm">
+                    <div class="setting-item" onclick="logout()">
+                        <div class="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><i data-lucide="log-out" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-red-600">Keluar Sesi</h4><p class="text-[11px] text-gray-400">Hapus ID dari perangkat</p></div>
+                    </div>
+                </div>
+                <div class="pb-10 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest">Chats+ by storybali</div>
+            </div>
+            
             <!-- Bottom Navigation -->
             <nav class="flex border-t bg-white safe-pb flex-shrink-0">
                 <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-3 flex flex-col items-center gap-1 text-indigo-600">
                     <i data-lucide="message-square" class="w-5 h-5"></i><span class="text-[10px] font-bold">Chat</span>
                 </button>
+                <button onclick="switchTab('contacts')" id="nav-contacts" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-bold">Kontak</span>
+                </button>
                 <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
                     <i data-lucide="phone" class="w-5 h-5"></i><span class="text-[10px] font-bold">Panggilan</span>
                 </button>
-                <button onclick="openProfile()" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
                     <i data-lucide="settings" class="w-5 h-5"></i><span class="text-[10px] font-bold">Setelan</span>
                 </button>
             </nav>
         </div>
 
-        <!-- SCREEN: Profile & Settings -->
-        <div id="screen-profile" class="absolute inset-0 z-[120] bg-white flex flex-col page-slide translate-x-full hidden">
-            <header class="safe-pt px-4 pb-4 border-b flex items-center gap-4">
-                <button onclick="closeProfile()" class="p-2 text-gray-500"><i data-lucide="arrow-left"></i></button>
-                <h2 class="font-bold text-xl">Profil & Pengaturan</h2>
-            </header>
-            <div class="flex-1 overflow-y-auto">
-                <div class="p-8 flex flex-col items-center border-b bg-gray-50/50">
-                    <div id="profile-avatar-big" class="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-4xl text-white font-bold shadow-2xl mb-4">?</div>
-                    <h3 id="profile-name" class="text-2xl font-black text-gray-900">User ID</h3>
-                    <p class="text-sm text-gray-400">Personal Account</p>
-                </div>
-                
-                <div class="py-2">
-                    <div class="setting-item">
-                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i data-lucide="bell" class="w-5 h-5"></i></div>
-                        <div class="flex-1"><h4 class="font-bold text-sm">Notifikasi</h4><p class="text-xs text-gray-400">Kelola suara dan getaran</p></div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
-                    </div>
-                    <div class="setting-item">
-                        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i data-lucide="shield" class="w-5 h-5"></i></div>
-                        <div class="flex-1"><h4 class="font-bold text-sm">Keamanan P2P</h4><p class="text-xs text-gray-400">Enkripsi End-to-End aktif</p></div>
-                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
-                    </div>
-                    <div class="setting-item" onclick="clearAllLocalHistory()">
-                        <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></div>
-                        <div class="flex-1"><h4 class="font-bold text-sm text-orange-600">Bersihkan Semua Chat</h4><p class="text-xs text-gray-400">Hapus cache data di perangkat ini</p></div>
-                    </div>
-                    <div class="setting-item mt-10" onclick="logout()">
-                        <div class="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><i data-lucide="log-out" class="w-5 h-5"></i></div>
-                        <div class="flex-1"><h4 class="font-bold text-sm text-red-600">Keluar Sesi</h4><p class="text-xs text-gray-400">Hapus ID dan kembali ke login</p></div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6 text-center">
-                <p class="text-[10px] text-gray-300 uppercase tracking-widest font-bold">ConnectPro v2.0 Professional</p>
-            </div>
-        </div>
-
         <!-- SCREEN: Chat Detail -->
         <div id="screen-chat" class="page-slide translate-x-full hidden">
-            <header class="safe-pt px-4 pb-3 bg-white border-b border-gray-100 flex items-center gap-2 flex-shrink-0">
-                <button onclick="closeChat()" class="p-2 -ml-2 text-gray-500 active:scale-90">
+            <header class="safe-pt px-2 pb-3 bg-white border-b border-gray-100 flex items-center flex-shrink-0 shadow-sm">
+                <button onclick="closeChat()" class="p-2 text-gray-500 action-btn-alt">
                     <i data-lucide="chevron-left" class="w-6 h-6"></i>
                 </button>
-                <div id="target-avatar" class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center font-bold text-indigo-600 flex-shrink-0">?</div>
+                <div id="target-avatar" class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center font-bold text-indigo-600 flex-shrink-0 avatar-circle -ml-1 mr-3">?</div>
                 <div class="flex-1 min-w-0">
-                    <h3 id="target-name" class="font-bold text-gray-900 truncate text-sm">Nama Teman</h3>
-                    <p id="target-status" class="text-[10px] text-indigo-500 font-bold uppercase">P2P Terhubung</p>
+                    <h3 id="target-name" class="font-bold text-gray-900 truncate text-[15px] leading-tight">Nama Teman</h3>
+                    <p id="target-status" class="text-[11px] text-gray-500 font-medium lowercase italic">online</p>
                 </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
+                <div class="flex items-center gap-1 pr-2 flex-shrink-0">
                     <!-- Menu Titik Tiga -->
                     <div class="relative">
                         <button onclick="toggleChatMenu()" class="p-2 text-gray-400">
@@ -149,10 +241,10 @@
                             <button onclick="clearChatAction('everyone')" class="w-full text-left p-3 text-red-600 text-xs font-bold hover:bg-red-50 rounded-xl flex items-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Bersihkan untuk semua</button>
                         </div>
                     </div>
-                    <button onclick="startCall('video')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
+                    <button onclick="startCall('video')" class="action-btn-alt text-indigo-600">
                         <i data-lucide="video" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="startCall('audio')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
+                    <button onclick="startCall('audio')" class="action-btn-alt text-indigo-600">
                         <i data-lucide="phone" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -162,7 +254,7 @@
                 <!-- Pesan Chat -->
             </div>
 
-            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex flex-col safe-pb flex-shrink-0"> 
+            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex flex-col safe-pb flex-shrink-0">
                 <!-- Reply Preview Container -->
                 <div id="reply-container" class="hidden">
                     <div class="reply-preview">
@@ -173,18 +265,18 @@
                         <button onclick="cancelReply()" class="p-1 text-gray-400"><i data-lucide="x" class="w-4 h-4"></i></button>
                     </div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-500 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <button onclick="document.getElementById('file-input').click()" class="action-btn text-gray-500 flex-shrink-0">
                         <i data-lucide="paperclip" class="w-5 h-5"></i>
                     </button>
-                    <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0">
+                    <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0 chat-input-wrapper">
                         <select id="ephemeral-mode" class="bg-transparent border-none text-[10px] font-black text-indigo-600 uppercase outline-none cursor-pointer">
                             <option value="none">●</option>
                             <option value="24h">24H</option>
                             <option value="10s">10S</option>
                         </select>
                         <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
-                        <input type="text" id="chat-input" placeholder="Tulis pesan..." 
+                        <input type="text" id="chat-input" placeholder="Pesan"
                             class="flex-1 bg-transparent border-none focus:ring-0 outline-none text-[15px] py-1">
                     </div>
                     <button onclick="sendMsg()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform">
@@ -193,6 +285,20 @@
                 </div>
             </footer>
         </div>
+
+        <!-- Image Preview Modal -->
+        <div id="image-preview-modal" class="fixed inset-0 z-[900] bg-black/90 flex flex-col items-center justify-center p-4 hidden">
+            <div class="absolute top-0 left-0 right-0 px-4 flex justify-between items-center text-white safe-pt">
+                <button onclick="closeImagePreview()" class="p-2"><i data-lucide="x" class="w-6 h-6"></i></button>
+                <button id="download-image-btn" class="p-2"><i data-lucide="download" class="w-6 h-6"></i></button>
+            </div>
+            <img id="image-preview-img" src="" class="max-w-full max-h-[80vh] object-contain shadow-2xl">
+        </div>
+
+        <!-- View Once Image Modal (already exists, just ensuring it's here) -->
+        <!-- This modal is dynamically created in chat.js openViewOnce function -->
+
+
 
         <!-- SCREEN: Call UI -->
         <div id="screen-call" class="absolute inset-0 z-[200] bg-black hidden flex flex-col">
@@ -205,7 +311,7 @@
         </div>
 
         <!-- OVERLAY: Incoming Call -->
-        <div id="incoming-call-overlay" class="fixed inset-0 z-[300] bg-indigo-900/95 flex flex-col items-center justify-between py-24 px-10 text-white hidden">
+        <div id="incoming-call-overlay" class="absolute inset-0 z-[300] bg-indigo-900/95 flex flex-col items-center justify-between py-24 px-10 text-white hidden">
             <div class="text-center">
                 <div id="ic-avatar" class="w-24 h-24 bg-white/20 rounded-[2.5rem] flex items-center justify-center text-4xl font-bold mb-6 mx-auto">?</div>
                 <h2 id="ic-name" class="text-3xl font-black mb-2">Nama Teman</h2>
@@ -218,7 +324,7 @@
         </div>
 
         <!-- COMPONENT: Custom Dialog (Modal) -->
-        <div id="modal-custom" class="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+        <div id="modal-custom" class="absolute inset-0 z-[400] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
             <div class="bg-white w-full rounded-[2rem] p-6 shadow-2xl scale-95 transition-transform duration-200">
                 <h3 id="modal-title" class="text-xl font-black mb-2 text-gray-900">Judul</h3>
                 <p id="modal-desc" class="text-sm text-gray-500 mb-8 leading-relaxed">Deskripsi pesan konfirmasi di sini.</p>
@@ -230,8 +336,8 @@
         </div>
 
         <!-- COMPONENT: Bottom Sheet -->
-        <div id="bottom-sheet-overlay" class="fixed inset-0 z-[350] bg-black/40 hidden" onclick="closeBottomSheet()"></div>
-        <div id="bottom-sheet" class="fixed bottom-0 left-0 right-0 z-[360] bg-white rounded-t-[2.5rem] p-6 shadow-2xl translate-y-full transition-transform duration-300 ease-out flex flex-col gap-2 max-w-lg mx-auto">
+        <div id="bottom-sheet-overlay" class="absolute inset-0 z-[350] bg-black/40 hidden" onclick="closeBottomSheet()"></div>
+        <div id="bottom-sheet" class="absolute bottom-0 left-0 right-0 z-[360] bg-white rounded-t-[2.5rem] p-6 shadow-2xl translate-y-full transition-transform duration-300 ease-out flex flex-col gap-2 w-full mx-auto">
             <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
             <div id="sheet-content" class="flex flex-col gap-1">
                 <!-- Opsi Menu di sini -->
@@ -239,7 +345,7 @@
         </div>
 
         <!-- MODAL: Tambah Kontak -->
-        <div id="modal-add" class="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+        <div id="modal-add" class="absolute inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-8 hidden">
             <div class="bg-white w-full rounded-[2rem] p-6 shadow-2xl">
                 <h3 class="text-xl font-bold mb-2">Tambah Teman</h3>
                 <p class="text-sm text-gray-500 mb-6">Masukkan ID unik teman Anda untuk mulai mengobrol.</p>
@@ -255,12 +361,12 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 translate-y-10 z-[300] bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-2xl opacity-0 transition-all pointer-events-none">
+    <div id="toast" class="absolute bottom-24 left-1/2 -translate-x-1/2 translate-y-10 z-[300] bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-2xl opacity-0 transition-all pointer-events-none w-max max-w-[80%]">
         Notification
     </div>
 
-    <script src="contacts.js?v=1.2"></script>
     <script src="chat.js?v=1.2"></script>
+    <script src="contacts.js?v=1.2"></script>
     <script src="calls.js?v=1.2"></script>
     <script src="ui.js?v=1.2"></script>
     <script src="app.js?v=1.2"></script>
