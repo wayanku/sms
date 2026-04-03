@@ -81,7 +81,7 @@
 
         /* Menangani Safe Area untuk iPhone X+ dan Android Modern */
         .safe-pt { padding-top: max(1.2rem, env(safe-area-inset-top)) !important; }
-        .safe-pb { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important; }
+        .safe-pb { padding-bottom: max(0.2rem, env(safe-area-inset-bottom)) !important; }
 
         #main-app { height: 100dvh; }
 
@@ -204,16 +204,16 @@
             
             <!-- Bottom Navigation -->
             <nav class="flex border-t bg-white safe-pb flex-shrink-0">
-                <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-3 flex flex-col items-center gap-1 text-indigo-600">
+                <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-1 flex flex-col items-center gap-1 text-indigo-600">
                     <i data-lucide="message-square" class="w-5 h-5"></i><span class="text-[10px] font-bold">Chat</span>
                 </button>
-                <button onclick="switchTab('contacts')" id="nav-contacts" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                <button onclick="switchTab('contacts')" id="nav-contacts" class="flex-1 py-1 flex flex-col items-center gap-1 text-gray-400">
                     <i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-bold">Kontak</span>
                 </button>
-                <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-1 flex flex-col items-center gap-1 text-gray-400">
                     <i data-lucide="phone" class="w-5 h-5"></i><span class="text-[10px] font-bold">Panggilan</span>
                 </button>
-                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 py-3 flex flex-col items-center gap-1 text-gray-400">
+                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 py-1 flex flex-col items-center gap-1 text-gray-400">
                     <i data-lucide="settings" class="w-5 h-5"></i><span class="text-[10px] font-bold">Setelan</span>
                 </button>
             </nav>
@@ -254,7 +254,7 @@
                 <!-- Pesan Chat -->
             </div>
 
-            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex flex-col safe-pb flex-shrink-0">
+            <footer class="bg-white border-t border-gray-100 px-4 py-1 flex flex-col safe-pb flex-shrink-0">
                 <!-- Reply Preview Container -->
                 <div id="reply-container" class="hidden">
                     <div class="reply-preview">
