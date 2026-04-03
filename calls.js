@@ -14,6 +14,7 @@ async function acceptCall() {
     const call = window.incomingCall;
     callSound.pause();
     document.getElementById('incoming-call-overlay').classList.add('hidden');
+    document.getElementById('call-target-name').innerText = call.peer;
     saveCallLog(call.peer, 'incoming', 'accepted');
     await setupMedia(true);
     call.answer(localStream);
@@ -30,6 +31,7 @@ function rejectCall() {
 
 async function startCall(type) {
     const id = document.getElementById('target-name').innerText;
+    document.getElementById('call-target-name').innerText = id;
     saveCallLog(id, 'outgoing', 'calling');
     await setupMedia(type === 'video');
     document.getElementById('screen-call').classList.remove('hidden');
@@ -60,6 +62,36 @@ function toggleCam() {
     }
     document.getElementById('cam-toggle').innerHTML = `<i data-lucide="${isCam ? 'video' : 'video-off'}"></i>`;
     lucide.createIcons();
+}
+
+async function switchCamera() {
+    if (!localStream) return;
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (!videoTrack) return;
+
+    // Toggle facing mode
+    const currentFacing = videoTrack.getSettings().facingMode;
+    const newFacing = currentFacing === 'user' ? 'environment' : 'user';
+
+    videoTrack.stop();
+    
+    try {
+        const newStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: newFacing },
+            audio: true
+        });
+        
+        const newVideoTrack = newStream.getVideoTracks()[0];
+        localStream.removeTrack(videoTrack);
+        localStream.addTrack(newVideoTrack);
+        
+        document.getElementById('local-video-pip').srcObject = localStream;
+        
+        if (activeCall && activeCall.peerConnection) {
+            const sender = activeCall.peerConnection.getSenders().find(s => s.track.kind === 'video');
+            if (sender) sender.replaceTrack(newVideoTrack);
+        }
+    } catch (e) { showToast("Gagal ganti kamera"); }
 }
 
 function manageCall(call) {
