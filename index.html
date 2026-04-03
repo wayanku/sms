@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ConnectPro">
     <title>Chat P2P Pro</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,31 +14,68 @@
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
-    <style>
+    <style type="text/tailwindcss">
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
         :root {
-            --ios-safe-top: env(safe-area-inset-top);
-            --ios-safe-bottom: env(safe-area-inset-bottom);
+            --ios-safe-top: env(safe-area-inset-top, 0px);
+            --ios-safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #ffffff;
+            background-color: #f8fafc;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain; /* Mencegah pull-to-refresh */
+            height: 100dvh; 
+            width: 100vw;
+            overflow: hidden;
+            position: fixed; /* Mencegah scroll pada body */
         }
 
-        /* Perbaikan Penting: Font minimal 16px untuk mencegah Zoom di iPhone */
+        #main-app {
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Mencegah Zoom Otomatis di iOS */
         input, select, textarea {
             font-size: 16px !important;
         }
 
-        .safe-pt { padding-top: calc(1rem + var(--ios-safe-top)); }
-        .safe-pb { padding-bottom: calc(1rem + var(--ios-safe-bottom)); }
+        .safe-pt { padding-top: calc(1rem + var(--ios-safe-top, 0px)); }
+        .safe-pb { padding-bottom: calc(0.75rem + var(--ios-safe-bottom)); }
 
         /* Custom Scrollbar untuk area chat */
         .chat-container::-webkit-scrollbar { width: 0; }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            background-color: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Pastikan screen-chat menutupi layar sepenuhnya */
+        #screen-chat {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 160;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hidden {
+            display: none !important;
+        }
         
         .message-bubble {
             max-width: 80%;
@@ -82,15 +120,54 @@
             70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
+
+        .ephemeral-badge {
+            font-size: 9px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.1);
+            margin-bottom: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .setting-item {
+            @apply flex items-center gap-4 p-4 active:bg-gray-50 transition border-b border-gray-50;
+        }
+
+        /* Glassmorphism Header */
+        .glass-header {
+            @apply bg-white/90 backdrop-blur-md sticky top-0 z-30 border-b border-gray-100;
+        }
+
+        /* Chat Input Container */
+        .chat-input-wrapper {
+            @apply bg-white border-t border-gray-100 px-4 py-3 flex items-end gap-3 safe-pb;
+        }
+
+        .input-field {
+            @apply flex-1 bg-gray-100 rounded-[22px] px-4 py-2.5 focus-within:bg-gray-200 transition-colors flex items-center gap-2;
+        }
+
+        .action-btn {
+            @apply p-2.5 rounded-full hover:bg-gray-100 transition-colors text-gray-500 active:scale-90;
+        }
+
+        footer {
+            flex-shrink: 0; 
+            background: white;
+            z-index: 10;
+        }
     </style>
 </head>
 <body class="h-screen overflow-hidden flex flex-col bg-gray-50">
 
     <!-- Container Utama -->
-    <div id="main-app" class="relative flex-1 w-full max-w-lg mx-auto bg-white flex flex-col h-full shadow-2xl">
+    <div id="main-app" class="relative flex-1 w-full max-w-lg mx-auto bg-white flex flex-col h-full overflow-hidden shadow-2xl">
 
         <!-- SCREEN: Login/Set Username -->
-        <div id="screen-login" class="absolute inset-0 z-[100] bg-indigo-600 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
+        <div id="screen-login" class="absolute inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-800 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
             <div class="mb-8 p-6 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
                 <i data-lucide="shield-check" class="w-16 h-16"></i>
             </div>
@@ -99,7 +176,7 @@
             
             <div class="w-full space-y-4">
                 <input type="text" id="login-username" placeholder="Username (misal: andi_99)" 
-                    class="w-full p-4 rounded-2xl bg-white text-gray-900 font-semibold outline-none shadow-xl">
+                    class="w-full p-4 rounded-2xl bg-white text-gray-900 font-semibold outline-none shadow-xl border-none">
                 <button onclick="initApp()" class="w-full py-4 bg-indigo-950 rounded-2xl font-bold hover:bg-black transition active:scale-95 shadow-lg">
                     Masuk Sekarang
                 </button>
@@ -108,46 +185,96 @@
         </div>
 
         <!-- SCREEN: Home (Contact List) -->
-        <div id="screen-home" class="flex flex-col h-full hidden">
-            <header class="safe-pt px-6 pb-4 bg-white border-b flex justify-between items-center sticky top-0 z-20">
+        <div id="screen-home" class="absolute inset-0 z-10 flex flex-col bg-white hidden h-full">
+            <header class="safe-pt px-6 pb-4 glass-header flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                    <div id="my-avatar" class="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold shadow-lg">?</div>
+                    <div id="my-avatar" onclick="openProfile()" class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md cursor-pointer active:scale-95 transition">
+                        ?
+                    </div>
                     <div>
-                        <h2 id="my-display-id" class="font-bold text-gray-900 leading-none mb-1">Username</h2>
+                        <h2 id="my-display-id" class="font-bold text-gray-900 leading-tight">Username</h2>
                         <span class="text-[10px] font-bold text-green-500 uppercase">● Online</span>
                     </div>
                 </div>
-                <button onclick="openModalAdd()" class="p-2.5 bg-gray-50 rounded-xl text-gray-600 active:bg-indigo-50 active:text-indigo-600 transition">
-                    <i data-lucide="plus" class="w-6 h-6"></i>
-                </button>
+                <button onclick="openModalAdd()" class="action-btn bg-gray-50"><i data-lucide="plus" class="w-6 h-6"></i></button>
             </header>
 
-            <div class="px-6 py-4">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Kontak Saya</h3>
+            <div class="flex-1 overflow-y-auto px-6 py-4">
+                <h3 class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-4">Percakapan Baru</h3>
                 <div id="contact-list" class="space-y-3 overflow-y-auto">
                     <!-- Daftar Kontak -->
                 </div>
-            </div>
 
-            <!-- Empty State -->
-            <div id="empty-contacts" class="flex-1 flex flex-col items-center justify-center p-10 text-center opacity-30">
-                <i data-lucide="users" class="w-16 h-16 mb-4"></i>
-                <p class="font-semibold">Belum ada kontak.<br>Tambah teman dengan ID mereka!</p>
+                <!-- Empty State -->
+                <div id="empty-contacts" class="flex flex-col items-center justify-center p-10 text-center opacity-30 hidden">
+                    <i data-lucide="users" class="w-16 h-16 mb-4"></i>
+                    <p class="font-semibold">Belum ada kontak.<br>Tambah teman dengan ID mereka!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SCREEN: Profile & Settings -->
+        <div id="screen-profile" class="absolute inset-0 z-[120] bg-white flex flex-col page-slide translate-x-full hidden">
+            <header class="safe-pt px-4 pb-4 border-b flex items-center gap-4">
+                <button onclick="closeProfile()" class="p-2 text-gray-500"><i data-lucide="arrow-left"></i></button>
+                <h2 class="font-bold text-xl">Profil & Pengaturan</h2>
+            </header>
+            <div class="flex-1 overflow-y-auto">
+                <div class="p-8 flex flex-col items-center border-b bg-gray-50/50">
+                    <div id="profile-avatar-big" class="w-24 h-24 bg-indigo-600 rounded-[2.5rem] flex items-center justify-center text-4xl text-white font-bold shadow-2xl mb-4">?</div>
+                    <h3 id="profile-name" class="text-2xl font-black text-gray-900">User ID</h3>
+                    <p class="text-sm text-gray-400">Personal Account</p>
+                </div>
+                
+                <div class="py-2">
+                    <div class="setting-item">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i data-lucide="bell" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm">Notifikasi</h4><p class="text-xs text-gray-400">Kelola suara dan getaran</p></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </div>
+                    <div class="setting-item">
+                        <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i data-lucide="shield" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm">Keamanan P2P</h4><p class="text-xs text-gray-400">Enkripsi End-to-End aktif</p></div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
+                    </div>
+                    <div class="setting-item" onclick="clearAllLocalHistory()">
+                        <div class="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i data-lucide="trash-2" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-orange-600">Bersihkan Semua Chat</h4><p class="text-xs text-gray-400">Hapus cache data di perangkat ini</p></div>
+                    </div>
+                    <div class="setting-item mt-10" onclick="logout()">
+                        <div class="w-10 h-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center"><i data-lucide="log-out" class="w-5 h-5"></i></div>
+                        <div class="flex-1"><h4 class="font-bold text-sm text-red-600">Keluar Sesi</h4><p class="text-xs text-gray-400">Hapus ID dan kembali ke login</p></div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 text-center">
+                <p class="text-[10px] text-gray-300 uppercase tracking-widest font-bold">ConnectPro v2.0 Professional</p>
             </div>
         </div>
 
         <!-- SCREEN: Chat Detail -->
-        <div id="screen-chat" class="absolute inset-0 z-50 bg-white flex flex-col page-slide translate-x-full hidden">
-            <header class="safe-pt px-4 pb-3 border-b flex items-center gap-2 bg-white/80 backdrop-blur-md sticky top-0 z-10">
-                <button onclick="closeChat()" class="p-2 -ml-2 text-gray-500 active:scale-90 transition">
+        <div id="screen-chat" class="page-slide translate-x-full hidden">
+            <header class="safe-pt px-4 pb-3 bg-white border-b border-gray-100 flex items-center gap-2 flex-shrink-0">
+                <button onclick="closeChat()" class="p-2 -ml-2 text-gray-500 active:scale-90">
                     <i data-lucide="chevron-left" class="w-6 h-6"></i>
                 </button>
-                <div id="target-avatar" class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center font-bold text-indigo-600">?</div>
-                <div class="flex-1 overflow-hidden">
-                    <h3 id="target-name" class="font-bold text-gray-900 leading-none truncate">Nama Teman</h3>
-                    <p id="target-status" class="text-[10px] text-indigo-500 font-bold uppercase mt-1">P2P Terhubung</p>
+                <div id="target-avatar" class="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center font-bold text-indigo-600 flex-shrink-0">?</div>
+                <div class="flex-1 min-w-0">
+                    <h3 id="target-name" class="font-bold text-gray-900 truncate text-sm">Nama Teman</h3>
+                    <p id="target-status" class="text-[10px] text-indigo-500 font-bold uppercase">P2P Terhubung</p>
                 </div>
-                <div class="flex gap-1">
+                <div class="flex items-center gap-1 flex-shrink-0">
+                    <!-- Menu Titik Tiga -->
+                    <div class="relative">
+                        <button onclick="toggleChatMenu()" class="p-2 text-gray-400">
+                            <i data-lucide="more-vertical" class="w-5 h-5"></i>
+                        </button>
+                        <div id="chat-options-menu" class="hidden absolute top-full right-0 mt-2 w-40 bg-white shadow-2xl rounded-2xl border p-1 z-[200]">
+                            <button onclick="clearCurrentChat()" class="w-full text-left p-3 text-red-600 text-xs font-bold flex items-center gap-2 hover:bg-red-50 rounded-xl">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i> Bersihkan Chat
+                            </button>
+                        </div>
+                    </div>
                     <button onclick="startCall('video')" class="p-2.5 text-indigo-600 active:bg-indigo-50 rounded-xl">
                         <i data-lucide="video" class="w-5 h-5"></i>
                     </button>
@@ -157,27 +284,32 @@
                 </div>
             </header>
 
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50 chat-container">
+            <div id="chat-messages" class="chat-container p-4 space-y-3">
                 <!-- Pesan Chat -->
             </div>
 
-            <div class="px-4 py-3 bg-white border-t flex items-center gap-2 safe-pb">
-                <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-400 hover:text-indigo-600 transition">
-                    <i data-lucide="paperclip" class="w-6 h-6"></i>
+            <footer class="bg-white border-t border-gray-100 px-4 py-3 flex items-center gap-3 safe-pb">
+                <button onclick="document.getElementById('file-input').click()" class="p-2 text-gray-500 flex-shrink-0">
+                    <i data-lucide="paperclip" class="w-5 h-5"></i>
                 </button>
-                <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
-                <div class="flex-1 bg-gray-100 rounded-2xl flex items-center px-4">
+                <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0">
+                    <select id="ephemeral-mode" class="bg-transparent border-none text-[10px] font-black text-indigo-600 uppercase outline-none cursor-pointer">
+                        <option value="none">●</option>
+                        <option value="24h">24H</option>
+                        <option value="10s">10S</option>
+                    </select>
+                    <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
                     <input type="text" id="chat-input" placeholder="Tulis pesan..." 
-                        class="flex-1 py-3 bg-transparent border-none focus:ring-0 outline-none">
+                        class="flex-1 bg-transparent border-none focus:ring-0 outline-none text-[15px] py-1">
                 </div>
-                <button onclick="sendMsg()" class="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg active:scale-90 transition">
-                    <i data-lucide="send" class="w-5 h-5"></i>
+                <button onclick="sendMsg()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform">
+                    <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
                 </button>
-            </div>
+            </footer>
         </div>
 
         <!-- SCREEN: Call UI -->
-        <div id="screen-call" class="fixed inset-0 z-[200] bg-black hidden flex flex-col">
+        <div id="screen-call" class="absolute inset-0 z-[200] bg-black hidden flex flex-col">
             <video id="remote-video" class="remote-video-fullscreen" autoplay playsinline></video>
             <video id="local-video-pip" autoplay muted playsinline></video>
 
@@ -218,14 +350,15 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[300] bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-2xl opacity-0 transition-all pointer-events-none">
+    <div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 translate-y-10 z-[300] bg-gray-900 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-2xl opacity-0 transition-all pointer-events-none">
         Notification
     </div>
 
     <script>
         let peer, myId, activeConn, activeCall, localStream, db, sb;
-        let contacts = JSON.parse(localStorage.getItem('p2p_contacts') || '[]');
+        let contacts = JSON.parse(localStorage.getItem('p2p_contacts') || '[]').filter(c => c && typeof c.id === 'string');
         let isMic = true, isCam = true;
+        let ephemeralTimer;
         let typingTimeout;
 
         // KONFIGURASI SUPABASE (Ganti dengan milik Anda)
@@ -237,7 +370,19 @@
         // Inisialisasi Database (IndexedDB)
         db = new Dexie("ChatProDB");
         db.version(1).stores({
-            messages: '++id, peerId, sender, text, type, fileBlob, fileName, status, time, image_url' // Menambahkan image_url
+            messages: '++id, peerId, sender, text, type, fileBlob, fileName, status, time, image_url, expires_at' 
+        });
+
+        // Auto Login
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedId = localStorage.getItem('p2p_myid');
+            if(savedId) {
+                document.getElementById('my-display-id').innerText = savedId;
+                document.getElementById('my-avatar').innerText = savedId.charAt(0).toUpperCase();
+                document.getElementById('login-username').value = savedId;
+                initApp();
+            }
+            startEphemeralCleanup();
         });
 
         function initApp() {
@@ -248,12 +393,15 @@
 
             // Inisialisasi Supabase
             sb = supabase.createClient(supabaseUrl, supabaseKey);
+            localStorage.setItem('p2p_myid', myId);
             setupRealtime();
 
             peer = new Peer(myId, { debug: 1 });
 
             peer.on('open', (id) => {
-                document.getElementById('screen-login').classList.add('opacity-0', 'pointer-events-none');
+                const loginScr = document.getElementById('screen-login');
+                loginScr.classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => loginScr.classList.add('hidden'), 500);
                 document.getElementById('screen-home').classList.remove('hidden');
                 document.getElementById('my-display-id').innerText = id;
                 document.getElementById('my-avatar').innerText = id.charAt(0).toUpperCase();
@@ -286,6 +434,48 @@
             });
         }
 
+        // PROFILE & SETTINGS
+        function openProfile() {
+            const screen = document.getElementById('screen-profile');
+            screen.classList.remove('hidden');
+            document.getElementById('profile-name').innerText = myId;
+            document.getElementById('profile-avatar-big').innerText = myId.charAt(0).toUpperCase();
+            setTimeout(() => screen.classList.remove('translate-x-full'), 10);
+            lucide.createIcons();
+        }
+        function closeProfile() {
+            const screen = document.getElementById('screen-profile');
+            screen.classList.add('translate-x-full');
+            setTimeout(() => screen.classList.add('hidden'), 300);
+        }
+        function logout() {
+            if(confirm("Keluar dari akun ini? Semua riwayat akan tetap ada kecuali Anda klik Bersihkan Chat.")) {
+                localStorage.removeItem('p2p_myid');
+                location.reload();
+            }
+        }
+
+        // CLEAR CHAT
+        async function clearCurrentChat() {
+            const peerId = document.getElementById('target-name').innerText;
+            if(confirm(`Hapus semua pesan dengan ${peerId}?`)) {
+                // Hapus Lokal
+                await db.messages.where('peerId').equals(peerId).delete();
+                // Hapus Supabase
+                try { await sb.from('messages').delete().or(`and(sender.eq.${myId},receiver.eq.${peerId}),and(sender.eq.${peerId},receiver.eq.${myId})`); } catch(e){}
+                renderMsgs(peerId);
+                toggleChatMenu();
+                showToast("Pesan dibersihkan");
+            }
+        }
+        async function clearAllLocalHistory() {
+            if(confirm("Hapus semua cache chat di HP ini?")) {
+                await db.messages.clear();
+                showToast("Cache dibersihkan");
+            }
+        }
+        function toggleChatMenu() { document.getElementById('chat-options-menu').classList.toggle('hidden'); }
+
         // KONTAK
         function openModalAdd() { document.getElementById('modal-add').classList.remove('hidden'); }
         function closeModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
@@ -310,11 +500,12 @@
             else empty.classList.remove('hidden');
 
             contacts.forEach(c => {
+                if (!c || !c.id) return;
                 const row = document.createElement('div');
                 row.className = "flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl active:bg-indigo-50 active:scale-[0.98] transition cursor-pointer";
                 row.onclick = () => openChat(c.id);
                 row.innerHTML = `
-                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold">${c.id.charAt(0).toUpperCase()}</div>
+                    <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center text-indigo-600 font-bold">${(c.id.charAt(0) || '?').toUpperCase()}</div>
                     <div class="flex-1">
                         <h4 class="font-bold text-gray-800">${c.id}</h4>
                         <p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Klik untuk chat</p>
@@ -328,20 +519,34 @@
 
         // CHAT
         async function openChat(id) {
+            if (!id) return;
             const screen = document.getElementById('screen-chat');
+            
+            // 1. Tampilkan kontainer chat
             screen.classList.remove('hidden');
+            
+            // 2. Animasi masuk
             setTimeout(() => screen.classList.remove('translate-x-full'), 10);
             
             document.getElementById('target-name').innerText = id;
-            document.getElementById('target-avatar').innerText = id.charAt(0).toUpperCase();
+            document.getElementById('target-avatar').innerText = (id.charAt(0) || '?').toUpperCase();
+            // Tampilkan pesan lokal segera agar UI tidak terlihat kosong/rusak
+            renderMsgs(id);
 
             if(!activeConn || activeConn.peer !== id) {
                 if(activeConn) activeConn.close();
                 activeConn = peer.connect(id);
                 setupConnHandlers(activeConn);
             }
-            await syncSupabaseHistory(id);
-            renderMsgs(id);
+            
+            try {
+                await syncSupabaseHistory(id);
+                renderMsgs(id);
+            } catch (err) {
+                console.error("Gagal sinkronisasi history:", err);
+            }
+
+            lucide.createIcons();
         }
 
         function closeChat() {
@@ -383,13 +588,25 @@
 
         function sendMsg() {
             const input = document.getElementById('chat-input');
+            const mode = document.getElementById('ephemeral-mode').value;
             const txt = input.value.trim();
             if(!txt || !activeConn) return;
 
-            const msgObj = { type: 'text', text: txt, time: Date.now() };
+            let expiresAt = null;
+            if(mode === '24h') expiresAt = Date.now() + (24 * 60 * 60 * 1000);
+            if(mode === '10s') expiresAt = Date.now() + (10 * 1000);
+
+            const msgObj = { 
+                type: 'text', 
+                text: txt, 
+                time: Date.now(),
+                expires_at: expiresAt
+            };
+            
             activeConn.send(msgObj);
             saveMsg(activeConn.peer, msgObj, 'me').then(() => renderMsgs(activeConn.peer));
             input.value = "";
+            document.getElementById('ephemeral-mode').value = 'none';
 
             if (typingTimeout) {
                 clearTimeout(typingTimeout);
@@ -440,6 +657,7 @@
         }
 
         async function saveMsg(peerId, data, sender) {
+            const msgTime = data.time || Date.now();
             // 1. Simpan ke IndexedDB Lokal
             const msgId = await db.messages.add({
                 peerId: peerId,
@@ -449,26 +667,23 @@
                 fileBlob: data.fileBlob || null,
                 image_url: data.image_url || null,
                 status: sender === 'me' ? 'sent' : 'received',
-                time: data.time || Date.now()
+                time: msgTime,
+                expires_at: data.expires_at || null
             });
 
-            if (data.type === 'text') {
-                await sb.from('messages').insert([{
-                    sender: sender === 'me' ? myId : peerId,
-                    receiver: sender === 'me' ? peerId : myId,
-                    content: data.text,
-                    type: 'text',
-                    created_at: new Date(data.time).toISOString()
-                }]);
-            } else if (data.type === 'image' && data.image_url) {
-                await sb.from('messages').insert([{
-                    sender: sender === 'me' ? myId : peerId,
-                    receiver: sender === 'me' ? peerId : myId,
-                    image_url: data.image_url,
-                    type: 'image',
-                    created_at: new Date(data.time).toISOString()
-                }]);
-            }
+            // 2. Simpan ke Supabase
+            const payload = {
+                sender: sender === 'me' ? myId : peerId,
+                receiver: sender === 'me' ? peerId : myId,
+                type: data.type,
+                created_at: new Date(msgTime).toISOString(),
+                expires_at: data.expires_at ? new Date(data.expires_at).toISOString() : null
+            };
+            if (data.type === 'text') payload.content = data.text;
+            if (data.type === 'image' && data.image_url) payload.image_url = data.image_url;
+
+            const { error } = await sb.from('messages').insert([payload]);
+            if (error) console.error("Supabase Save Error:", error);
             
             return msgId;
         }
@@ -483,14 +698,8 @@
             if (data) {
                 for (const msg of data) {
                     const msgTime = new Date(msg.created_at).getTime();
-                    // Pengecekan yang lebih robust untuk menghindari duplikasi
-                    const exists = await db.messages.where({
-                        time: msgTime,
-                        peerId: friendId,
-                        sender: msg.sender === myId ? 'me' : 'them',
-                        text: msg.content || null,
-                        image_url: msg.image_url || null
-                    }).first();
+                    // Cek duplikasi berdasarkan timestamp
+                    const exists = await db.messages.where('time').equals(msgTime).first();
                     if (!exists) {
                         await db.messages.add({
                             peerId: friendId,
@@ -527,13 +736,33 @@
                                     fileName: null,
                                     status: 'delivered',
                                     time: new Date(msg.created_at).getTime(),
-                                    image_url: msg.image_url || null
+                                    image_url: msg.image_url || null,
+                                    expires_at: msg.expires_at ? new Date(msg.expires_at).getTime() : null
                                 }).then(() => renderMsgs(msg.sender));
                             }
                         }
                     }
                 })
                 .subscribe();
+        }
+
+        // Ephemeral Worker
+        function startEphemeralCleanup() {
+            setInterval(async () => {
+                const now = Date.now();
+                const expired = await db.messages.where('expires_at').below(now).toArray();
+                if(expired.length > 0) {
+                    for(let m of expired) {
+                        await db.messages.delete(m.id);
+                        // Juga hapus di server jika pengirimnya adalah saya
+                        if(m.sender === 'me') {
+                            await sb.from('messages').delete().eq('created_at', new Date(m.time).toISOString());
+                        }
+                    }
+                    const targetId = document.getElementById('target-name').innerText;
+                    if(targetId) renderMsgs(targetId);
+                }
+            }, 1000);
         }
 
         async function renderMsgs(id) {
@@ -544,8 +773,18 @@
             box.innerHTML = "";
             
             msgs.forEach(m => {
+                if(m.expires_at && Date.now() > m.expires_at) return;
+
                 const d = document.createElement('div');
                 d.className = `flex ${m.sender === 'me' ? 'justify-end' : 'justify-start'}`;
+                
+                let ephemeralUI = "";
+                if(m.expires_at) {
+                    const diff = Math.max(0, Math.floor((m.expires_at - Date.now()) / 1000));
+                    const icon = diff > 60 ? "clock" : "timer";
+                    const label = diff > 60 ? "24 Jam" : `${diff}s`;
+                    ephemeralUI = `<div class="ephemeral-badge"><i data-lucide="${icon}" class="w-3 h-3"></i> ${label}</div>`;
+                }
                 
                 let content = m.text;
                 if (m.type === 'image') {
@@ -562,17 +801,19 @@
                     }
                 }
 
-                const timeStr = new Date(m.status === 'sent' || m.status === 'delivered' ? m.time : m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const timeStr = new Date(m.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
                 const statusIcon = m.sender === 'me' ? (m.status === 'delivered' ? '✓✓' : '✓') : '';
 
                 d.innerHTML = `
-                    <div class="message-bubble shadow-sm ${m.sender === 'me' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'}">
+                    <div class="message-bubble shadow-sm ${m.sender === 'me' ? 'bg-indigo-600 text-white bubble-me' : 'bg-white text-gray-800 bubble-them border border-gray-100'}">
+                        ${ephemeralUI}
                         ${content}
                         <div class="text-[9px] mt-1 opacity-50 text-right font-bold">${timeStr} ${statusIcon}</div>
                     </div>
                 `;
                 box.appendChild(d);
             });
+            lucide.createIcons();
             if (isAtBottom) box.scrollTop = box.scrollHeight;
         }
 
@@ -669,6 +910,14 @@
         // Keyboard Enter
         document.getElementById('chat-input').addEventListener('keypress', (e) => e.key === 'Enter' && sendMsg());
         document.getElementById('login-username').addEventListener('keypress', (e) => e.key === 'Enter' && initApp());
+
+        // Memperbaiki tampilan saat keyboard muncul di mobile
+        if ('visualViewport' in window) {
+            window.visualViewport.addEventListener('resize', () => {
+                const height = window.visualViewport.height;
+                document.getElementById('main-app').style.height = height + 'px';
+            });
+        }
 
     </script>
 </body>
