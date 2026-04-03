@@ -61,7 +61,9 @@ function startApp() {
         document.getElementById('my-display-id').innerText = savedId;
         document.getElementById('my-avatar').innerText = (savedId.charAt(0) || '?').toUpperCase();
         document.getElementById('login-username').value = savedId;
-        initApp();
+        // Gunakan setTimeout untuk memastikan semua script lain (contacts.js, calls.js, dll.)
+        // telah sepenuhnya diurai sebelum initApp() dipanggil.
+        setTimeout(initApp, 0); 
     }
 }
 
@@ -116,8 +118,17 @@ lucide.createIcons();
 
 // Visual viewport resize fix
 if ('visualViewport' in window) {
-    window.visualViewport.addEventListener('resize', () => {
-        const height = window.visualViewport.height;
-        document.getElementById('main-app').style.height = height + 'px';
-    });
+            mainApp.style.height = vv.height + 'px';
+            // Mencegah konten bergeser ke atas secara tidak sengaja di iOS
+            window.scrollTo(0, 0);
+            // Pastikan chat otomatis scroll ke bawah jika sedang terbuka saat keyboard muncul
+            const chatBox = document.getElementById('chat-messages');
+            if (chatBox && !document.getElementById('screen-chat').classList.contains('hidden')) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+    };
+    window.visualViewport.addEventListener('resize', handleViewport);
+    window.visualViewport.addEventListener('scroll', handleViewport);
+    window.addEventListener('load', handleViewport);
 }
