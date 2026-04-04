@@ -305,12 +305,11 @@ if ('visualViewport' in window) {
         const vv = window.visualViewport;
         const mainApp = document.getElementById('main-app');
         if (mainApp) {
-            // Menyesuaikan tinggi aplikasi dengan area yang benar-benar terlihat
+            // Gunakan fixed height untuk mencegah layout bergeser liar
+            // offsetTop membantu menangani pergeseran pada beberapa browser mobile
             mainApp.style.height = `${vv.height}px`;
+            mainApp.style.top = `${vv.offsetTop}px`;
             
-            // Memaksa posisi ke atas agar tidak ada gap putih saat keyboard muncul di iOS PWA
-            if (vv.height < window.innerHeight) window.scrollTo(0, 0);
-
             // Pastikan chat otomatis scroll ke bawah jika sedang terbuka saat keyboard muncul
             const chatBox = document.getElementById('chat-messages');
             if (chatBox && !document.getElementById('screen-chat').classList.contains('hidden')) {
