@@ -22,6 +22,11 @@
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-font-smoothing: antialiased;
+            /* Mencegah bounce scroll yang merusak layout PWA */
+            overscroll-behavior-y: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
         }
         /* Desktop Optimization: Split View */
         @media (min-width: 1024px) {
@@ -118,7 +123,7 @@
         .active-scale:active { transform: scale(0.96); }
 
         /* Custom Scrollbar for better UX */
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 0px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
         
