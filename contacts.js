@@ -1,6 +1,3 @@
-console.log("contacts.js loaded");
-function openModalAdd() { document.getElementById('modal-add').classList.remove('hidden'); }
-function closeModalAdd() { document.getElementById('modal-add').classList.add('hidden'); }
 
 function confirmAddContact() {
     const id = document.getElementById('add-id-input').value.trim().toLowerCase();
@@ -31,8 +28,21 @@ async function renderRecentChats(query = "", filter = "all") {
     // Sort contacts by last message time (most recent first)
     const sortedContacts = await Promise.all(validContacts.map(async c => {
         const lastMsg = await db.messages.where('peerId').equals(c.id).last();
-        const unreadCount = await db.messages.where({ peerId: c.id, sender: 'them', isRead: 0 }).count(); // Query for isRead: 0
-        return { ...c, lastMsg, unreadCount };
+        const unreadCount = await db.messages.where({ peerId: c.id, sender: 'them', isRead: 0 }).count();
+        
+        // Dekripsi pesan terakhir untuk preview di daftar chat
+        let decryptedPreview = "";
+        if (lastMsg) {
+            if (lastMsg.type === 'text') {
+                decryptedPreview = await cryptoUtils.decrypt(lastMsg.text, c.id);
+            } else if (lastMsg.type === 'image') {
+                decryptedPreview = '🖼️ Gambar';
+            } else if (lastMsg.type === 'audio') {
+                decryptedPreview = '🎤 Pesan Suara';
+            }
+        }
+        
+        return { ...c, lastMsg, unreadCount, decryptedPreview };
     }));
 
     // Logika Filter Chats+ Style
@@ -58,12 +68,29 @@ async function renderRecentChats(query = "", filter = "all") {
     recentChats.forEach(c => {
         if (!c || !c.id) return;
         const row = document.createElement('div');
-        row.className = "flex items-center gap-4 py-3 bg-white active:bg-gray-50 transition cursor-pointer border-b border-gray-50 last:border-0 px-4";
+        row.className = "chat-row flex items-center gap-4 py-3 bg-white active:bg-gray-50 transition cursor-pointer border-b border-gray-50 last:border-0 px-4";
+        row.dataset.peerId = c.id;
         row.onclick = () => openChat(c.id); // Langsung buka chat saat diklik
 
         const displayName = c.name || c.id; // Gunakan nama alias jika ada
-        const lastMsgText = c.lastMsg ? (c.lastMsg.type === 'image' ? '🖼️ Gambar' : c.lastMsg.text) : 'Belum ada pesan';
+        
+        let lastMsgText = c.lastMsg ? c.decryptedPreview : 'Belum ada pesan';
+        let lastMsgClass = "text-[13px] text-gray-500 truncate max-w-[150px]";
+        
+        if (globalTypingStatus[c.id]) {
+            lastMsgText = "sedang mengetik...";
+            lastMsgClass = "text-[13px] text-green-500 font-bold italic animate-pulse";
+        }
+
         const lastTime = c.lastMsg ? new Date(c.lastMsg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
+        
+        let statusTick = "";
+        if (c.lastMsg && c.lastMsg.sender === 'me') {
+            const tickColor = c.lastMsg.status === 'read' ? 'text-blue-500' : 'text-gray-400';
+            const tickIcon = c.lastMsg.status === 'sent' ? 'check' : 'check-check';
+            statusTick = `<i data-lucide="${tickIcon}" class="w-3 h-3 ${tickColor} inline mr-1"></i>`;
+        }
+
         const unreadBadge = c.unreadCount > 0 
             ? `<div class="flex flex-col items-end gap-1">
                 <span class="text-[10px] text-indigo-600 font-bold">${lastTime}</span>
@@ -75,11 +102,8 @@ async function renderRecentChats(query = "", filter = "all") {
             <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center text-indigo-600 font-bold flex-shrink-0 shadow-sm border border-gray-50">${(c.id.charAt(0) || '?').toUpperCase()}</div>
             <div class="flex-1 min-w-0">
                 <h4 class="font-bold text-gray-800">${displayName}</h4>
-                <p class="text-[13px] text-gray-500 truncate max-w-[150px]">${lastMsgText}</p>
+                <p class="${lastMsgClass}">${statusTick}${lastMsgText}</p>
             </div>
-            <button onclick="event.stopPropagation(); showContactOptions('${c.id}')" class="p-2 text-gray-400 hover:bg-gray-100 rounded-full flex-shrink-0">
-                <i data-lucide="more-vertical" class="w-5 h-5"></i>
-            </button>
             ${unreadBadge}
         `;
         list.appendChild(row);
@@ -162,18 +186,6 @@ function handleContactSheetAction(action, contactId) {
                 closeChat(); // Tutup chat jika sedang dibuka
             }
         });
-    }
-}
-
-function handleInboundConn(conn) {
-    activeConn = conn;
-    setupConnHandlers(conn);
-    if(!contacts.find(c => c.id === conn.peer)) {
-        contacts.push({id: conn.peer});
-        localStorage.setItem('p2p_contacts', JSON.stringify(contacts));
-        renderRecentChats();
-        renderContacts();
-        updateTotalUnreadBadge();
     }
 }
 
