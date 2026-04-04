@@ -5,19 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Chats+">
-    <meta name="theme-color" content="#4f46e5">
+    <meta name="apple-mobile-web-app-title" content="Chat+">
+    <meta name="theme-color" content="#6366f1">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/733/733585.png">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/733/733585.png">
-    <title>Chats+</title>
+    <title>Chat+</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css?v=1.2"> 
     <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
         /* Desktop Optimization: Split View */
         @media (min-width: 1024px) {
             body {
@@ -57,12 +62,26 @@
             button[onclick="closeChat()"] { display: none !important; }
         }
 
+        /* Privacy Shield Blur */
+        .privacy-blur { filter: blur(30px) grayscale(1); pointer-events: none; transition: filter 0.3s ease; }
+        #ai-loading-overlay { backdrop-filter: blur(4px); background: rgba(255,255,255,0.7); }
+
         /* Telegram-style Shred/Destruction Animation */
         @keyframes shred {
             0% { transform: scale(1); opacity: 1; filter: blur(0); }
             100% { transform: scale(1.1); opacity: 0; filter: blur(10px) brightness(2); }
         }
         .shredding { animation: shred 0.6s ease-out forwards; pointer-events: none; }
+
+        /* Apple Style Glassmorphism */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            z-index: 100;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+        }
 
         /* Premium Badge Animation */
         @keyframes premium-glow {
@@ -80,65 +99,92 @@
         }
 
         /* Menangani Safe Area untuk iPhone X+ dan Android Modern */
-        .safe-pt { padding-top: max(1.2rem, env(safe-area-inset-top)) !important; }
-        .safe-pb { padding-bottom: env(safe-area-inset-bottom) !important; }
-
+        .safe-pt { padding-top: max(1rem, env(safe-area-inset-top)) !important; }
+        .safe-pb { padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important; }
+        
+        /* Apple Style Sticky Headers */
+        .sticky-section {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(242, 242, 247, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        
         #main-app { height: 100dvh; }
 
-        /* Memastikan footer chat selalu berada di lapisan atas dan tidak tertutup */
-        #screen-chat footer { z-index: 50; position: relative; }
+        /* Better Touch Feedback */
+        .active-scale { transition: transform 0.1s; }
+        .active-scale:active { transform: scale(0.96); }
+
+        /* Custom Scrollbar for better UX */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        
+        .chat-bubble-me {
+            border-bottom-right-radius: 4px !important;
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+
+        .chat-bubble-them {
+            border-bottom-left-radius: 4px !important;
+        }
+
+        .page-slide {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
     </style>
 </head>
-<body class="min-h-[100dvh] overflow-hidden flex flex-col bg-gray-50">
+<body class="min-h-[100dvh] overflow-hidden flex flex-col bg-[#F2F2F7]">
 
     <!-- Container Utama -->
     <div id="main-app" class="relative flex-1 w-full lg:max-w-screen-xl mx-auto bg-white flex flex-col h-full overflow-hidden">
 
         <!-- SCREEN: Login/Set Username -->
-        <div id="screen-login" class="absolute inset-0 z-[200] bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-10 text-white transition-all duration-500">
-            <div class="mb-8 p-6 bg-white/10 rounded-[2.5rem] backdrop-blur-md">
-                <i data-lucide="shield-check" class="w-16 h-16"></i>
+        <div id="screen-login" class="absolute inset-0 z-[500] bg-white flex flex-col items-center justify-center p-10 transition-all duration-700">
+            <div class="mb-8 p-8 bg-indigo-50 rounded-[3rem] text-indigo-600">
+                <i data-lucide="zap" class="w-20 h-20 fill-current"></i>
             </div>
-            <h1 class="text-3xl font-extrabold mb-2">Chats+</h1>
-            <p class="text-indigo-100 text-center mb-10 text-sm opacity-80">Masukkan nama unik Anda untuk mulai mengobrol secara privat.</p>
+            <h1 class="text-4xl font-bold mb-3 tracking-tight text-gray-900">Chat+</h1>
+            <p class="text-gray-500 text-center mb-12 text-sm leading-relaxed max-w-xs">Pengalaman pesan instan yang privat, cepat, dan presisi.</p>
             
-            <div class="w-full space-y-4">
+            <div class="w-full max-w-sm space-y-4">
                 <input type="text" id="login-username" placeholder="Username (misal: andi_99)" 
-                    class="w-full p-4 rounded-2xl bg-white text-gray-900 font-semibold outline-none shadow-xl border-none">
-                <button onclick="initApp()" class="w-full py-4 bg-indigo-950 rounded-2xl font-bold hover:bg-black transition active:scale-95 shadow-lg">
-                    Masuk Sekarang
+                    class="w-full p-5 rounded-2xl bg-gray-100 text-gray-900 font-medium outline-none focus:ring-2 focus:ring-indigo-500 transition-all border-none">
+                <button onclick="initApp()" class="w-full py-5 bg-indigo-600 rounded-2xl font-semibold text-white hover:bg-indigo-700 transition active:scale-95 shadow-xl shadow-indigo-100">
+                    Lanjutkan
                 </button>
             </div>
-            <p class="mt-12 text-[10px] uppercase tracking-widest opacity-50">P2P Encryption Active</p>
+            <p class="mt-16 text-[11px] font-semibold text-gray-300 uppercase tracking-[0.2em]">End-to-End Encrypted</p>
         </div>
 
         <!-- SCREEN: Home (Contact List) -->
-        <div id="screen-home" class="absolute inset-0 z-10 flex flex-col bg-white hidden h-full">
+        <div id="screen-home" class="absolute inset-0 z-10 flex flex-col bg-[#F9FAFB] hidden h-full">
             <!-- Header for Chats Tab -->
-            <header id="main-header" class="safe-pt px-4 pb-4 glass-header flex justify-between items-center flex-shrink-0">
-                <h1 id="header-title" class="text-2xl font-extrabold text-gray-900">Chats+</h1>
-                <div class="flex gap-1">
-                    <button class="action-btn"><i data-lucide="search" class="w-6 h-6"></i></button>
-                    <button onclick="openModalAdd()" class="action-btn"><i data-lucide="square-pen" class="w-6 h-6"></i></button>
+            <header id="main-header" class="safe-pt px-5 pb-3 glass-header flex justify-between items-end flex-shrink-0 min-h-[90px]">
+                <h1 id="header-title" class="text-2xl font-bold tracking-tight text-gray-900">Chat+</h1>
+                <div class="flex gap-5">
+                    <button class="text-indigo-600 active:opacity-50 transition-opacity"><i data-lucide="search" class="w-[22px] h-[22px]"></i></button>
+                    <button onclick="openModalAdd()" class="text-indigo-600 active:opacity-50 transition-opacity"><i data-lucide="plus-circle" class="w-[22px] h-[22px]"></i></button>
                 </div>
             </header>
 
             <!-- Tab Content: Chats -->
-            <div id="tab-content-chats" class="flex-1 overflow-y-auto">
-                <div class="relative px-4 mb-4">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-7 text-gray-400">
+            <div id="tab-content-chats" class="flex-1 overflow-y-auto pt-4">
+                <div class="relative px-6 mb-6">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-10 text-gray-400">
                         <i data-lucide="search" class="w-4 h-4"></i>
                     </span>
                     <input type="text" id="search-chat-input" placeholder="Cari pesan atau nama..."
-                        class="w-full pl-10 pr-4 py-3 bg-gray-100 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-semibold transition-all"
+                        class="w-full pl-12 pr-4 py-3 bg-[#EBEEF2] rounded-xl outline-none text-md transition-all border-none"
                         oninput="renderRecentChats(this.value)">
                 </div>
 
                 <!-- Filter kategori pesan -->
-                <div id="filter-pills" class="px-4 mb-4 flex gap-2 overflow-x-auto scrollbar-hide">
+                <div id="filter-pills" class="px-6 mb-6 flex gap-2 overflow-x-auto scrollbar-hide">
                     <button onclick="updateFilter(this, 'all')" class="pill-active px-4 py-1.5 rounded-full text-xs font-bold transition-all">Semua</button>
-                    <button onclick="updateFilter(this, 'unread')" class="pill-inactive px-4 py-1.5 rounded-full text-xs font-bold transition-all">Belum Dibaca <span id="unread-total-badge" class="ml-1 text-white bg-red-500 rounded-full px-1.5 py-0.5 text-[9px] hidden"></span></button>
-                    <button class="pill-inactive px-4 py-1.5 rounded-full text-xs font-bold opacity-50 cursor-not-allowed">Grup <span class="ml-1 text-white bg-gray-400 rounded-full px-1.5 py-0.5 text-[9px] hidden"></span></button>
+                    <button onclick="updateFilter(this, 'unread')" class="pill-inactive px-4 py-1.5 rounded-full text-xs font-bold transition-all">Belum Dibaca</button>
                 </div>
 
                 <div id="contact-list" class="bg-white"></div>
@@ -203,18 +249,23 @@
             </div>
             
             <!-- Bottom Navigation -->
-            <nav class="flex border-t bg-white safe-pb flex-shrink-0">
-                <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-0.5 flex flex-col items-center gap-1 text-indigo-600">
-                    <i data-lucide="message-square" class="w-5 h-5"></i><span class="text-[10px] font-bold">Chat</span>
+            <nav class="flex border-t border-gray-100 bg-white/90 backdrop-blur-2xl safe-pb flex-shrink-0">
+                <button onclick="switchTab('chats')" id="nav-chats" class="flex-1 py-2 flex flex-col items-center gap-1 text-indigo-600 relative">
+                    <i data-lucide="message-square" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Chat</span>
+                    <span id="nav-unread-badge" class="absolute top-1 right-1/2 translate-x-4 bg-red-500 text-white text-[9px] font-bold h-4 min-w-[16px] flex items-center justify-center px-1 rounded-full hidden">0</span>
                 </button>
-                <button onclick="switchTab('contacts')" id="nav-contacts" class="flex-1 py-0.5 flex flex-col items-center gap-1 text-gray-400">
-                    <i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-bold">Kontak</span>
+                <button onclick="switchTab('contacts')" id="nav-contacts" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="users" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Kontak</span>
                 </button>
-                <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-0.5 flex flex-col items-center gap-1 text-gray-400">
-                    <i data-lucide="phone" class="w-5 h-5"></i><span class="text-[10px] font-bold">Panggilan</span>
+                <button onclick="switchTab('calls')" id="nav-calls" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="phone" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Panggilan</span>
                 </button>
-                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 py-0.5 flex flex-col items-center gap-1 text-gray-400">
-                    <i data-lucide="settings" class="w-5 h-5"></i><span class="text-[10px] font-bold">Setelan</span>
+                <button onclick="switchTab('settings')" id="nav-settings" class="flex-1 py-2 flex flex-col items-center gap-1 text-gray-400">
+                    <i data-lucide="settings" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Setelan</span>
                 </button>
             </nav>
         </div>
@@ -230,7 +281,7 @@
                     <h3 id="target-name" class="font-bold text-gray-900 truncate text-[15px] leading-tight">Nama Teman</h3>
                     <p id="target-status" class="text-[11px] text-gray-500 font-medium lowercase italic">online</p>
                 </div>
-                <div class="flex items-center gap-1 pr-2 flex-shrink-0">
+                <div class="flex items-center gap-4 pr-3 flex-shrink-0">
                     <!-- Menu Titik Tiga -->
                     <div class="relative">
                         <button onclick="toggleChatMenu()" class="p-2 text-gray-400">
@@ -265,25 +316,45 @@
                         <button onclick="cancelReply()" class="p-1 text-gray-400"><i data-lucide="x" class="w-4 h-4"></i></button>
                     </div>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="document.getElementById('file-input').click()" class="action-btn text-gray-500 flex-shrink-0">
-                        <i data-lucide="paperclip" class="w-5 h-5"></i>
+                <div class="flex items-center gap-2 relative">
+                    <!-- Recording Overlay UI -->
+                    <div id="voice-rec-overlay" class="hidden absolute inset-0 bg-white z-20 flex items-center justify-between px-2">
+                        <div class="flex items-center gap-3 text-red-500">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span> 
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            </span>
+                            <span id="rec-duration" class="font-mono font-bold text-sm">00:00</span>
+                            <div id="waveform-live-container" class="flex items-center gap-1 h-6 min-w-[100px] justify-center"></div>
+                        </div>
+                        <button onclick="toggleRecording()" class="text-xs font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors">Batal</button>
+                    </div>
+
+                    <button onclick="document.getElementById('file-input').click()" class="action-btn text-gray-500 flex-shrink-0"> 
+                        <i data-lucide="plus" class="w-5 h-5"></i>
                     </button>
                     <div class="flex-1 bg-gray-100 rounded-[22px] px-4 py-1.5 flex items-center gap-2 min-w-0 chat-input-wrapper">
-                        <select id="ephemeral-mode" class="bg-transparent border-none text-[10px] font-black text-indigo-600 uppercase outline-none cursor-pointer">
-                            <option value="none">●</option>
-                            <option value="24h">24H</option>
-                            <option value="10s">10S</option>
-                        </select>
-                        <input type="file" id="file-input" class="hidden" accept="image/*" onchange="sendFile(this.files[0])">
+                        <input type="file" id="file-input" class="hidden" accept="image/*,audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="sendFile(this.files)">
                         <input type="text" id="chat-input" placeholder="Pesan"
                             class="flex-1 bg-transparent border-none focus:ring-0 outline-none text-[15px] py-1">
                     </div>
-                    <button onclick="sendMsg()" class="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform">
+                    <button id="record-btn" onclick="toggleRecording()" class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-all">
+                        <i data-lucide="mic" class="w-5 h-5"></i>
+                    </button>
+                    <button id="send-btn" onclick="sendMsg()" class="hidden w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-md flex-shrink-0 active:scale-90 transition-transform"> 
                         <i data-lucide="send" class="w-4 h-4 ml-0.5"></i>
                     </button>
                 </div>
             </footer>
+        </div>
+
+        <!-- AI Processing Overlay -->
+        <div id="ai-loading-overlay" class="fixed inset-0 z-[1000] flex flex-col items-center justify-center hidden">
+            <div class="bg-white p-6 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border border-indigo-100">
+                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm font-bold text-indigo-600 animate-pulse">AI sedang berpikir...</p>
+                <p id="ai-progress-text" class="text-[10px] text-gray-400 font-mono">Memuat model on-device...</p>
+            </div>
         </div>
 
         <!-- Image Preview Modal -->
@@ -377,6 +448,6 @@
     <script src="contacts.js?v=1.2"></script>
     <script src="calls.js?v=1.2"></script>
     <script src="ui.js?v=1.2"></script>
-    <script src="app.js?v=1.2"></script>
+    <script type="module" src="app.js?v=1.2"></script>
 </body>
 </html>
