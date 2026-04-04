@@ -33,7 +33,12 @@ async function startCall(type) {
     const id = document.getElementById('target-name').innerText;
     document.getElementById('call-target-name').innerText = id;
     saveCallLog(id, 'outgoing', 'calling');
-    await setupMedia(type === 'video');
+
+    const isVideo = type === 'video';
+    document.getElementById('remote-video').classList.toggle('hidden', !isVideo);
+    document.getElementById('local-video-pip').classList.toggle('hidden', !isVideo);
+
+    await setupMedia(isVideo);
     document.getElementById('screen-call').classList.remove('hidden');
     const call = peer.call(id, localStream);
     manageCall(call);
@@ -97,14 +102,25 @@ async function switchCamera() {
 function manageCall(call) {
     activeCall = call;
     document.getElementById('screen-call').classList.remove('hidden');
-    call.on('stream', (rem) => { document.getElementById('remote-video').srcObject = rem; });
+    call.on('stream', (rem) => { 
+        const remoteVideo = document.getElementById('remote-video');
+        remoteVideo.srcObject = rem;
+        const hasVideo = rem.getVideoTracks().length > 0;
+        remoteVideo.classList.toggle('hidden', !hasVideo);
+        document.getElementById('local-video-pip').classList.toggle('hidden', !hasVideo);
+    });
     call.on('close', endCall);
 }
 
 function endCall() {
     callSound.pause();
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+    }
     if(activeCall) activeCall.close();
-    if(localStream) localStream.getTracks().forEach(t => t.stop());
+    document.getElementById('remote-video').srcObject = null;
+    document.getElementById('local-video-pip').srcObject = null;
     document.getElementById('screen-call').classList.add('hidden');
 }
 
