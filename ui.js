@@ -106,6 +106,16 @@ function closeModalCustom() {
     setTimeout(() => modal.classList.add('hidden'), 200);
 }
 
+function openModalAdd() {
+    const modal = document.getElementById('modal-add');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeModalAdd() {
+    const modal = document.getElementById('modal-add');
+    if (modal) modal.classList.add('hidden');
+}
+
 function showBottomSheet(html) {
     document.getElementById('sheet-content').innerHTML = html;
     document.getElementById('bottom-sheet-overlay').classList.remove('hidden');
